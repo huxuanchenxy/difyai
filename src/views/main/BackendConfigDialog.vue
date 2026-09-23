@@ -337,9 +337,8 @@
     </el-dialog>
 
     <!-- 二级弹窗（通用）：由表 schema 的 relations 配置驱动 —— 按关联字段过滤目标表记录。
-         列由目标表 schema 驱动，与主列表共用同一套表单弹窗
-         （行操作传 relTargetKey，表单表上下文切到目标表）。
-         后端按关联字段查询的接口开发中：暂拉一大页在前端过滤，接口就绪后只改 loadRelationData -->
+         列由目标表 schema 驱动，与主列表共用同一套表单弹窗（行操作传 relTargetKey，
+         表单表上下文切到目标表）。服务端过滤+分页：分页参数照常，另带关联字段名与值 -->
     <el-dialog
       v-model="relDialog.visible"
       width="76%"
@@ -368,12 +367,12 @@
       <div class="bc-toolbar">
         <div class="bc-toolbar-left">
           <span class="bc-toolbar-title">{{ relTargetDef?.title }}</span>
-          <span class="bc-toolbar-sub">共 {{ relRows.length }} 条</span>
+          <span class="bc-toolbar-sub">共 {{ relDialog.total }} 条</span>
         </div>
       </div>
       <el-table
         v-loading="relDialog.loading"
-        :data="relRows"
+        :data="relDialog.rows"
         border
         stripe
         size="small"
@@ -434,6 +433,20 @@
           <div class="bc-empty">暂无关联记录</div>
         </template>
       </el-table>
+      <!-- 二级列表分页：与主列表同布局同皮肤（bc-sub-pager 供全局块镜像分页修复/胶囊样式） -->
+      <div class="bc-pager bc-sub-pager">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="relDialog.total"
+          :current-page="relDialog.pageNum"
+          :page-size="relDialog.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          popper-class="backend-config-popper"
+          @current-change="loadRelationData"
+          @size-change="handleRelationSize"
+        />
+      </div>
     </el-dialog>
   </el-dialog>
 
@@ -498,20 +511,26 @@ export default defineComponent({
     const formDef = computed<TableDef | undefined>(() => getTableDef(formTableKey.value))
 
     // ===== 二级弹窗（通用）：由表 schema 的 relations 配置驱动 =====
-    // 后端按关联字段过滤的查询接口开发中：暂拉一大页（pageSize=1000）在前端按 remoteField??localField 过滤；
-    // 接口就绪后只需把 loadRelationData 换成带关联字段的服务端查询，其余逻辑不变
+    // 服务端过滤 + 服务端分页：/page 接口照常传分页参数，
+    // 额外把配置的关联字段名（remoteField ?? localField）及其值作为 query 参数带上
     const relDialog = reactive<{
       visible: boolean
       rel: TableRelation | null
       keyValue: string
       loading: boolean
-      all: any[]
+      rows: any[]
+      total: number
+      pageNum: number
+      pageSize: number
     }>({
       visible: false,
       rel: null,
       keyValue: '',
       loading: false,
-      all: [],
+      rows: [],
+      total: 0,
+      pageNum: 1,
+      pageSize: 10,
     })
     const relTargetDef = computed<TableDef | undefined>(() =>
       relDialog.rel ? getTableDef(relDialog.rel.targetTable) : undefined,
@@ -520,34 +539,46 @@ export default defineComponent({
     const relColumns = computed<FieldDef[]>(() =>
       (relTargetDef.value?.fields || []).filter(f => f.inTable !== false),
     )
-    /** 目标表的过滤字段名：remoteField 缺省与 localField 同名 */
+    /** 目标表的过滤字段名：remoteField 缺省与 localField 同名；兼作二级列表查询的参数名 */
     const relMatchField = computed(() =>
       relDialog.rel ? (relDialog.rel.remoteField || relDialog.rel.localField) : '',
-    )
-    const relRows = computed(() =>
-      relDialog.all.filter(r => String(r?.[relMatchField.value] ?? '') === relDialog.keyValue),
     )
     /** 二级列表是否可写（默认是；relations 配 editable:false 则只留详情） */
     const relEditable = computed(() => relDialog.rel?.editable !== false)
 
-    const loadRelationData = async () => {
+    /** 二级列表查询：分页参数照常 + 关联字段名与值（服务端过滤）；num 传入时跳目标页 */
+    const loadRelationData = async (num?: number) => {
       if (!relDialog.rel) return
+      if (num) relDialog.pageNum = num
       relDialog.loading = true
       try {
-        const resp = await backendConfigApi[relDialog.rel.targetTable].page({ pageNum: 1, pageSize: 1000 })
+        const resp = await backendConfigApi[relDialog.rel.targetTable].page({
+          pageNum: relDialog.pageNum,
+          pageSize: relDialog.pageSize,
+          [relMatchField.value]: relDialog.keyValue,
+        })
         const page = (resp?.data || {}) as BackendPage
-        relDialog.all = Array.isArray(page.records) ? page.records : []
+        relDialog.rows = Array.isArray(page.records) ? page.records : []
+        relDialog.total = Number(page.total || 0)
       } catch (e: any) {
-        relDialog.all = []
+        relDialog.rows = []
+        relDialog.total = 0
         ElMessage.error(e?.message || '查询关联记录失败')
       } finally {
         relDialog.loading = false
       }
     }
-    /** 行级联按钮：以该行 localField 值为关联键打开目标表列表（每次重新拉取，保证编辑/删除后数据新鲜） */
+    const handleRelationSize = (size: number) => {
+      relDialog.pageSize = size
+      loadRelationData(1)
+    }
+    /** 行级联按钮：以该行 localField 值为关联键打开目标表列表（每次重新查询，保证编辑/删除后数据新鲜） */
     const openRelation = (rel: TableRelation, row: any) => {
       relDialog.rel = rel
       relDialog.keyValue = String(row?.[rel.localField] ?? '')
+      relDialog.pageNum = 1
+      relDialog.rows = []
+      relDialog.total = 0
       relDialog.visible = true
       loadRelationData()
     }
@@ -1017,7 +1048,8 @@ export default defineComponent({
         await backendConfigApi[formTableKey.value].remove(id)
         ElMessage.success('删除成功')
         if (tableKeyOverride && relDialog.visible) {
-          // 二级列表为前端过滤 + 本地滚动（无翻页）：重拉保持数据新鲜
+          // 二级为服务端分页：重拉当前页；删的是本页最后一条则回退一页
+          if (relDialog.rows.length === 1 && relDialog.pageNum > 1) relDialog.pageNum -= 1
           loadRelationData()
         } else {
           // 若删的是当前页最后一条，回退一页
@@ -1052,9 +1084,10 @@ export default defineComponent({
       relTargetKey,
       relColumns,
       relMatchField,
-      relRows,
       relEditable,
       openRelation,
+      loadRelationData,
+      handleRelationSize,
       rows,
       total,
       pageNum,
@@ -1500,5 +1533,89 @@ export default defineComponent({
    通过 popper-class 精确命中本弹层的下拉，用 !important 覆盖内联值抬到 dialog 之上。 */
 .backend-config-popper.el-popper {
   z-index: 10350 !important;
+}
+
+/* ===================== 二级级联弹窗的分页（服务端分页） =====================
+   二级弹窗 append-to-body 且套的是 backend-config-form-dialog 皮肤，不在
+   .backend-config-dialog 子树内，字体图标乱码修复与胶囊皮肤需在
+   .bc-sub-pager 下镜像一份，与主列表分页观感完全一致 */
+.bc-sub-pager .el-pagination .btn-prev .el-icon::before,
+.bc-sub-pager .el-pagination .btn-next .el-icon::before,
+.bc-sub-pager .el-pagination .el-select .el-input__icon::before {
+  content: none;
+}
+
+.bc-sub-pager .el-pagination .btn-prev .el-icon::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-top: -2px;
+  border-top: 1.6px solid currentColor;
+  border-left: 1.6px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.bc-sub-pager .el-pagination .btn-next .el-icon::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-top: -2px;
+  border-top: 1.6px solid currentColor;
+  border-right: 1.6px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.bc-sub-pager .el-pagination .el-select .el-input__icon::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-top: -3px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.bc-sub-pager .el-pagination .btn-prev,
+.bc-sub-pager .el-pagination .btn-next,
+.bc-sub-pager .el-pagination .el-pager li {
+  border: 1px solid #d6def0;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #5b6b82;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.bc-sub-pager .el-pagination .btn-prev:hover:not([disabled]),
+.bc-sub-pager .el-pagination .btn-next:hover:not([disabled]),
+.bc-sub-pager .el-pagination .el-pager li:hover {
+  color: #2f6bff;
+  border-color: #2f6bff;
+  background: #eef4ff;
+}
+
+.bc-sub-pager .el-pagination .btn-prev[disabled],
+.bc-sub-pager .el-pagination .btn-next[disabled] {
+  color: #c0c8d4;
+  border-color: #e5eaf2;
+  background: #f7f9fc;
+}
+
+.bc-sub-pager .el-pagination .el-pager li.active {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+}
+
+/* 二级弹窗表格横向滚动条加粗（与主列表同款处理；表单弹窗内无表格，不受影响） */
+.backend-config-form-dialog .el-table__body-wrapper::-webkit-scrollbar {
+  height: 10px;
+}
+
+.backend-config-form-dialog .el-table__body-wrapper::-webkit-scrollbar-thumb {
+  background: rgb(100, 116, 139, 0.6);
+  border-radius: 7px;
 }
 </style>

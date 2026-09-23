@@ -93,10 +93,11 @@ instance.interceptors.response.use(
   err => Promise.reject(err),
 )
 
-/** 分页参数 */
+/** 分页参数：pageNum/pageSize 全表通用；其余键为表自身的过滤条件（如 intentCode），直接透传为 query 参数 */
 export interface PageQuery {
   pageNum?: number
   pageSize?: number
+  [key: string]: any
 }
 
 /**
