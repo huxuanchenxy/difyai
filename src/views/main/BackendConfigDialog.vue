@@ -261,7 +261,7 @@
             type="textarea"
             :rows="4"
             :disabled="isReadonlyField(f)"
-            placeholder="JSON 对象，如 {}"
+            placeholder="JSON 对象或数组，如 {} 或 [...]"
             @blur="commitJsonField(f.prop)"
           />
           <!-- 字符串数组：一行一个 -->
@@ -905,8 +905,9 @@ export default defineComponent({
       return m ? (m[1] || '').trim() : t
     }
     /**
-     * 统一解析并校验 json / mdJson 字段的文本（与 jsonMode 一致，顶层必须是对象）：
-     *   空→{ok:true,value:null}；语法非法→msg；顶层非对象(数组/标量/null)→msg。
+     * 统一解析并校验 json / mdJson 字段的文本（与 jsonMode 一致，顶层对象/数组均合法）：
+     *   空→{ok:true,value:null}；语法非法→msg；顶层为标量/null→msg。
+     *   数组要放行：如 preCheckSlots 的值就是字符串数组 ["slots.time_range","slots.filters"]。
      * @param fenced 文本是否带 ```json 围栏（mdJson 为 true）
      */
     const parseJsonObject = (rawText: string, fenced = false): { ok: boolean; value?: any; msg?: string; } => {
@@ -914,8 +915,9 @@ export default defineComponent({
       if (!text) return { ok: true, value: null }
       let parsed: any
       try { parsed = JSON.parse(text) } catch { return { ok: false, msg: '不是合法 JSON' } }
-      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        return { ok: false, msg: '顶层必须是 JSON 对象 {...}' }
+      // null 被排除（无配置意义）；字符串/数字/布尔等标量仍拦下，防误输入
+      if (parsed === null || typeof parsed !== 'object') {
+        return { ok: false, msg: '顶层必须是 JSON 对象 {...} 或数组 [...]' }
       }
       return { ok: true, value: parsed }
     }
@@ -954,8 +956,8 @@ export default defineComponent({
           ElMessage.error('JSON 格式不合法')
           return
         }
-        if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
-          ElMessage.error('JSON 顶层必须是对象')
+        if (payload === null || typeof payload !== 'object') {
+          ElMessage.error('JSON 顶层必须是对象或数组')
           return
         }
       } else {
