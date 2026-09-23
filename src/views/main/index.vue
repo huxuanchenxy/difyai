@@ -9,6 +9,7 @@
       role="backend_ops"
       :md-editor="true"
       md-editor-storage-key="difyai-md-doc"
+      :text-welcome="false"
     >
       <!-- 后台配置入口：插入对话窗顶栏操作区（收起会话列表按钮同排），
            与 DifyRealDialog 顶部按钮风格完全一致，随主题 / 字号缩放 -->

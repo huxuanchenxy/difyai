@@ -808,6 +808,12 @@ export default defineComponent({
       type: String,
       default: '',
     },
+    // 是否以「角色文字欢迎语消息」开场。为 false 时不注入欢迎消息，
+    // 保留空态品牌欢迎页（welcome-screen：星光徽标 + 标语 + 引导卡片）
+    textWelcome: {
+      type: Boolean,
+      default: true,
+    },
     // 字体整体缩放倍率；<=0 表示未设置，回退读取 localStorage 中的持久化配置
     fontScale: {
       type: Number,
@@ -1894,6 +1900,8 @@ export default defineComponent({
     }
 
     const showWelcomeMessage = async () => {
+      // 宿主关闭文字欢迎语：保持消息区为空，由空态品牌欢迎页接手（仅当无加载错误时）
+      if (!props.textWelcome && !scriptLoadError.value) return
       if (!scriptLoaded.value) {
         await new Promise<void>(resolve => {
           const timer = setInterval(() => {
