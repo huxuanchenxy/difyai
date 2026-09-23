@@ -4,6 +4,7 @@ import IconKey from './key.vue'
 import IconLock from './lock.vue'
 import IconClose from './close.vue'
 import IconSettings from './settings.vue'
+import IconLogout from './logout.vue'
 
 export {
   IconAccount,
@@ -11,4 +12,5 @@ export {
   IconLock,
   IconClose,
   IconSettings,
+  IconLogout,
 }
