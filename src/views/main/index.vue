@@ -37,13 +37,31 @@
     </DifyRealDialog>
 
     <BackendConfigDialog v-model:visible="backendConfigVisible" />
+
+    <!-- 退出确认弹窗：风格与 DifyRealDialog 内置 .dify-real-confirm 完全一致（替 ElMessageBox）。
+         用 Teleport 挂到 body，确保盖在自绘对话窗（z-index 9999/10000）之上 -->
+    <Teleport to="body">
+      <div
+        v-if="logoutConfirmVisible"
+        class="dify-real-confirm-mask"
+        @click.self="logoutConfirmVisible = false"
+      >
+        <div class="dify-real-confirm">
+          <div class="dify-real-confirm__title">退出确认</div>
+          <div class="dify-real-confirm__message">确认退出当前账号登录？</div>
+          <div class="dify-real-confirm__actions">
+            <button class="dify-real-confirm__btn cancel" @click="logoutConfirmVisible = false">取消</button>
+            <button class="dify-real-confirm__btn danger" @click="confirmLogout">退出</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
 import DifyRealDialog from '@/components/dify-chatbot/DifyRealDialog.vue'
 import BackendConfigDialog from './BackendConfigDialog.vue'
 import { UserStore } from '@/domains/user'
@@ -65,18 +83,15 @@ export default defineComponent({
     const openBackendConfig = () => {
       backendConfigVisible.value = true
     }
-    // 退出登录：二次确认后走 UserStore().doLogout（清 token / 菜单缓存），再跳登录页；
+    // 退出确认弹窗显隐（风格对齐 DifyRealDialog 自定义确认框，替 ElMessageBox）
+    const logoutConfirmVisible = ref(false)
+    const handleLogout = () => {
+      logoutConfirmVisible.value = true
+    }
+    // 确认退出：走 UserStore().doLogout（清 token / 菜单缓存），再跳登录页；
     // 服务端退出接口失败不阻塞，本地清理在 doLogout 的 finally 中已完成，照常回登录页
-    const handleLogout = async () => {
-      try {
-        await ElMessageBox.confirm('确认退出当前账号登录？', '退出确认', {
-          type: 'warning',
-          confirmButtonText: '退出',
-          cancelButtonText: '取消',
-        })
-      } catch {
-        return // 取消退出
-      }
+    const confirmLogout = async () => {
+      logoutConfirmVisible.value = false
       try {
         await UserStore().doLogout()
       } finally {
@@ -87,7 +102,9 @@ export default defineComponent({
       showDialog,
       backendConfigVisible,
       openBackendConfig,
+      logoutConfirmVisible,
       handleLogout,
+      confirmLogout,
     }
   },
 })
