@@ -97,7 +97,7 @@
             </el-table-column>
             <el-table-column
               label="操作"
-              width="200"
+              :width="200 + 55 * activeRelations.length"
               fixed="right"
               align="center"
             >
@@ -105,6 +105,16 @@
                 <template v-if="scope && scope.row">
                   <el-button type="text" size="small" @click="openForm(scope.row)">编辑</el-button>
                   <el-button type="text" size="small" @click="openDetail(scope.row)">详情</el-button>
+                  <!-- 级联按钮：由表 schema 的 relations 配置驱动（文案/目标表/关联字段均可配） -->
+                  <el-button
+                    v-for="rel in activeRelations"
+                    :key="rel.label"
+                    type="text"
+                    size="small"
+                    @click="openRelation(rel, scope.row)"
+                  >
+                    {{ rel.label }}
+                  </el-button>
                   <el-button type="text" size="small" @click="handleCopy(scope.row)">复制</el-button>
                   <el-button
                     type="text"
@@ -206,9 +216,9 @@
           </button>
         </div>
       </template>
-      <!-- 结构化表单 -->
+      <!-- 结构化表单（表单表上下文见 formDef：主列表或二级「执行配置」弹窗） -->
       <el-form
-        v-if="activeDef && !activeDef.jsonMode"
+        v-if="formDef && !formDef.jsonMode"
         ref="formRef"
         :model="form"
         :rules="rules"
@@ -325,6 +335,106 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 二级弹窗（通用）：由表 schema 的 relations 配置驱动 —— 按关联字段过滤目标表记录。
+         列由目标表 schema 驱动，与主列表共用同一套表单弹窗
+         （行操作传 relTargetKey，表单表上下文切到目标表）。
+         后端按关联字段查询的接口开发中：暂拉一大页在前端过滤，接口就绪后只改 loadRelationData -->
+    <el-dialog
+      v-model="relDialog.visible"
+      width="76%"
+      top="7vh"
+      append-to-body
+      destroy-on-close
+      :show-close="false"
+      :z-index="10250"
+      custom-class="backend-config-form-dialog"
+    >
+      <template #title>
+        <div class="bc-dialog-header">
+          <span class="bc-dialog-title">
+            {{ relDialog.rel?.label }} - {{ relMatchField }}={{ relDialog.keyValue || '-' }}
+          </span>
+          <button
+            type="button"
+            class="bc-dialog-close"
+            aria-label="关闭"
+            @click="relDialog.visible = false"
+          >
+            <IconClose />
+          </button>
+        </div>
+      </template>
+      <div class="bc-toolbar">
+        <div class="bc-toolbar-left">
+          <span class="bc-toolbar-title">{{ relTargetDef?.title }}</span>
+          <span class="bc-toolbar-sub">共 {{ relRows.length }} 条</span>
+        </div>
+      </div>
+      <el-table
+        v-loading="relDialog.loading"
+        :data="relRows"
+        border
+        stripe
+        size="small"
+        :max-height="460"
+      >
+        <el-table-column
+          v-for="col in relColumns"
+          :key="col.prop"
+          :prop="col.prop"
+          :label="col.label"
+          :width="col.width"
+          :show-overflow-tooltip="true"
+        >
+          <!-- 与主列表同规则：不解构，防止初始化阶段以 undefined scope 调用插槽 -->
+          <template #default="scope">
+            <span v-if="scope && scope.row">{{ formatCell(scope.row[col.prop], col.kind) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="操作"
+          width="200"
+          fixed="right"
+          align="center"
+        >
+          <template #default="scope">
+            <template v-if="scope && scope.row">
+              <!-- 详情始终提供；编辑/复制/删除受 relation.editable 控制（false = 只读） -->
+              <el-button
+                v-if="relEditable"
+                type="text"
+                size="small"
+                @click="openForm(scope.row, 'edit', relTargetKey)"
+              >
+                编辑
+              </el-button>
+              <el-button type="text" size="small" @click="openDetail(scope.row, relTargetKey)">详情</el-button>
+              <el-button
+                v-if="relEditable"
+                type="text"
+                size="small"
+                @click="handleCopy(scope.row, relTargetKey)"
+              >
+                复制
+              </el-button>
+              <el-button
+                v-if="relEditable"
+                type="text"
+                size="small"
+                class="bc-danger"
+                @click="handleDelete(scope.row, relTargetKey)"
+              >
+                删除
+              </el-button>
+            </template>
+          </template>
+        </el-table-column>
+        <template #empty>
+          <div class="bc-empty">暂无关联记录</div>
+        </template>
+      </el-table>
+    </el-dialog>
   </el-dialog>
 
   <!-- Markdown 双栏编辑器（左原文/右预览），编辑完保存回填到当前 md/mdJson 字段。
@@ -348,7 +458,9 @@ import MdEditorDialog from '@/components/dify-chatbot/MdEditorDialog.vue'
 import { backendConfigApi, BackendTableKey, BackendPage } from '@/api/backendConfig'
 import {
   BACKEND_TABLES,
+  getTableDef,
   TableDef,
+  TableRelation,
   FieldDef,
   FieldKind,
   buildEmptyForm,
@@ -375,6 +487,70 @@ export default defineComponent({
     const activeDef = computed<TableDef | undefined>(() =>
       tables.find(t => t.key === activeKey.value),
     )
+
+    // 主列表当前表的级联配置（operations 列按此渲染弹出按钮）
+    const activeRelations = computed<TableRelation[]>(() => activeDef.value?.relations || [])
+
+    // 表单/删除等写操作的「当前表上下文」：默认跟随主列表 activeKey；
+    // 从二级级联弹窗进入时固定为目标表（relTargetKey），
+    // 使表单渲染、校验、提交、删除复用同一套逻辑（所有入口都会先重置此 key）
+    const formTableKey = ref<BackendTableKey>(activeKey.value)
+    const formDef = computed<TableDef | undefined>(() => getTableDef(formTableKey.value))
+
+    // ===== 二级弹窗（通用）：由表 schema 的 relations 配置驱动 =====
+    // 后端按关联字段过滤的查询接口开发中：暂拉一大页（pageSize=1000）在前端按 remoteField??localField 过滤；
+    // 接口就绪后只需把 loadRelationData 换成带关联字段的服务端查询，其余逻辑不变
+    const relDialog = reactive<{
+      visible: boolean
+      rel: TableRelation | null
+      keyValue: string
+      loading: boolean
+      all: any[]
+    }>({
+      visible: false,
+      rel: null,
+      keyValue: '',
+      loading: false,
+      all: [],
+    })
+    const relTargetDef = computed<TableDef | undefined>(() =>
+      relDialog.rel ? getTableDef(relDialog.rel.targetTable) : undefined,
+    )
+    const relTargetKey = computed<BackendTableKey | undefined>(() => relDialog.rel?.targetTable)
+    const relColumns = computed<FieldDef[]>(() =>
+      (relTargetDef.value?.fields || []).filter(f => f.inTable !== false),
+    )
+    /** 目标表的过滤字段名：remoteField 缺省与 localField 同名 */
+    const relMatchField = computed(() =>
+      relDialog.rel ? (relDialog.rel.remoteField || relDialog.rel.localField) : '',
+    )
+    const relRows = computed(() =>
+      relDialog.all.filter(r => String(r?.[relMatchField.value] ?? '') === relDialog.keyValue),
+    )
+    /** 二级列表是否可写（默认是；relations 配 editable:false 则只留详情） */
+    const relEditable = computed(() => relDialog.rel?.editable !== false)
+
+    const loadRelationData = async () => {
+      if (!relDialog.rel) return
+      relDialog.loading = true
+      try {
+        const resp = await backendConfigApi[relDialog.rel.targetTable].page({ pageNum: 1, pageSize: 1000 })
+        const page = (resp?.data || {}) as BackendPage
+        relDialog.all = Array.isArray(page.records) ? page.records : []
+      } catch (e: any) {
+        relDialog.all = []
+        ElMessage.error(e?.message || '查询关联记录失败')
+      } finally {
+        relDialog.loading = false
+      }
+    }
+    /** 行级联按钮：以该行 localField 值为关联键打开目标表列表（每次重新拉取，保证编辑/删除后数据新鲜） */
+    const openRelation = (rel: TableRelation, row: any) => {
+      relDialog.rel = rel
+      relDialog.keyValue = String(row?.[rel.localField] ?? '')
+      relDialog.visible = true
+      loadRelationData()
+    }
 
     // 列表状态
     const rows = ref<any[]>([])
@@ -425,13 +601,13 @@ export default defineComponent({
 
     // MdEditorDialog 已提到根级，需在其宿主弹窗/表单关闭时主动收起，避免悬空编辑器
     watch(formVisible, val => { if (!val) mdEditor.visible = false })
-    watch(() => props.visible, val => { if (!val) { mdEditor.visible = false; formVisible.value = false } })
+    watch(() => props.visible, val => { if (!val) { mdEditor.visible = false; formVisible.value = false; relDialog.visible = false } })
 
     const tableColumns = computed<FieldDef[]>(() =>
       (activeDef.value?.fields || []).filter(f => f.inTable !== false),
     )
     const formFields = computed<FieldDef[]>(() =>
-      (activeDef.value?.fields || []).filter(f => f.inForm !== false),
+      (formDef.value?.fields || []).filter(f => f.inForm !== false),
     )
 
     /**
@@ -441,7 +617,7 @@ export default defineComponent({
      *   - json 字段额外校验 JSON 合法性。
      */
     const rules = computed<Record<string, any[]>>(() => {
-      const def = activeDef.value
+      const def = formDef.value
       const result: Record<string, any[]> = {}
       if (!def || def.jsonMode) return result
       const trigger = ['blur', 'change']
@@ -485,7 +661,7 @@ export default defineComponent({
       return result
     })
     const formTitle = computed(() => {
-      const t = activeDef.value?.title || ''
+      const t = formDef.value?.title || ''
       if (formMode.value === 'create') return `新增 - ${t}`
       if (formMode.value === 'edit') return `编辑 - ${t}`
       return `详情 - ${t}`
@@ -614,13 +790,15 @@ export default defineComponent({
     }
 
     /**
-     * 打开表单弹窗：row 为空表示新增。
+     * 打开表单弹窗：row 为空表示新增；tableKeyOverride 表示来自二级级联弹窗
+     * （传入 relation.targetTable，表单表上下文切到目标表，与主列表共用同一套表单）。
      * 编辑/详情采用「接口优先 + 行数据兜底」：先用列表行占位立即弹窗，
      * 再调 getById 拉取最新完整记录覆盖（避免列表裁剪字段导致全量 PUT 覆盖丢数据）。
      */
-    const openForm = async (row?: any, mode: FormMode = 'edit') => {
-      if (!activeDef.value) return
-      const def = activeDef.value
+    const openForm = async (row?: any, mode: FormMode = 'edit', tableKeyOverride?: BackendTableKey) => {
+      formTableKey.value = tableKeyOverride ?? activeKey.value
+      if (!formDef.value) return
+      const def = formDef.value
 
       if (!row) {
         formMode.value = 'create'
@@ -636,7 +814,7 @@ export default defineComponent({
       const id = row[def.idField]
       if (id === null || id === undefined || id === '') return
       try {
-        const resp = await backendConfigApi[activeKey.value].getById(id)
+        const resp = await backendConfigApi[formTableKey.value].getById(id)
         const fresh = resp?.data
         // 接口成功且返回对象：用权威记录覆盖；失败/空则保留列表行数据
         if (fresh && typeof fresh === 'object') {
@@ -647,20 +825,22 @@ export default defineComponent({
       }
     }
 
-    const openDetail = (row: any) => openForm(row, 'view')
+    const openDetail = (row: any, tableKeyOverride?: BackendTableKey) =>
+      openForm(row, 'view', tableKeyOverride)
 
     /**
      * 复制：以该行数据为模板开「新增」表单（预填字段、清空主键），提交走 save。
      * 与编辑一致先拉 getById 取完整记录，避免列表裁剪字段。
      */
-    const handleCopy = async (row: any) => {
-      if (!activeDef.value || !row) return
-      const def = activeDef.value
+    const handleCopy = async (row: any, tableKeyOverride?: BackendTableKey) => {
+      formTableKey.value = tableKeyOverride ?? activeKey.value
+      const def = formDef.value
+      if (!def || !row) return
       let record = row
       const id = row[def.idField]
       if (id !== null && id !== undefined && id !== '') {
         try {
-          const resp = await backendConfigApi[activeKey.value].getById(id)
+          const resp = await backendConfigApi[formTableKey.value].getById(id)
           if (resp?.data && typeof resp.data === 'object') record = resp.data
         } catch (e: any) {
           ElMessage.warning(e?.message || '获取详情失败，已用列表数据复制')
@@ -724,11 +904,11 @@ export default defineComponent({
         .filter(s => s.length > 0)
     }
 
-    /** 提交（新增/更新） */
+    /** 提交（新增/更新）：表单表上下文由 formTableKey 决定（主列表或二级执行配置） */
     const handleSubmit = async () => {
-      if (!activeDef.value) return
-      const def = activeDef.value
-      const api = backendConfigApi[activeKey.value]
+      const def = formDef.value
+      if (!def) return
+      const api = backendConfigApi[formTableKey.value]
       let payload: Record<string, any>
 
       if (def.jsonMode) {
@@ -804,7 +984,9 @@ export default defineComponent({
           ElMessage.success('更新成功')
         }
         formVisible.value = false
-        loadPage()
+        // 来自二级级联弹窗的提交：刷新其前端过滤列表；否则刷新主列表
+        if (relDialog.visible && formTableKey.value === relDialog.rel?.targetTable) loadRelationData()
+        else loadPage()
       } catch (e: any) {
         ElMessage.error(e?.message || '保存失败')
       } finally {
@@ -812,10 +994,11 @@ export default defineComponent({
       }
     }
 
-    /** 删除 */
-    const handleDelete = async (row: any) => {
-      if (!activeDef.value) return
-      const def = activeDef.value
+    /** 删除：传 tableKeyOverride（= relation.targetTable）时删的是二级级联列表里的目标表记录 */
+    const handleDelete = async (row: any, tableKeyOverride?: BackendTableKey) => {
+      formTableKey.value = tableKeyOverride ?? activeKey.value
+      const def = formDef.value
+      if (!def) return
       const id = row?.[def.idField]
       if (id === null || id === undefined || id === '') {
         ElMessage.error(`记录缺少主键 ${def.idField}`)
@@ -831,11 +1014,16 @@ export default defineComponent({
         return // 取消
       }
       try {
-        await backendConfigApi[activeKey.value].remove(id)
+        await backendConfigApi[formTableKey.value].remove(id)
         ElMessage.success('删除成功')
-        // 若删的是当前页最后一条，回退一页
-        if (rows.value.length === 1 && pageNum.value > 1) pageNum.value -= 1
-        loadPage()
+        if (tableKeyOverride && relDialog.visible) {
+          // 二级列表为前端过滤 + 本地滚动（无翻页）：重拉保持数据新鲜
+          loadRelationData()
+        } else {
+          // 若删的是当前页最后一条，回退一页
+          if (rows.value.length === 1 && pageNum.value > 1) pageNum.value -= 1
+          loadPage()
+        }
       } catch (e: any) {
         ElMessage.error(e?.message || '删除失败')
       }
@@ -857,6 +1045,16 @@ export default defineComponent({
       tables,
       activeKey,
       activeDef,
+      formDef,
+      activeRelations,
+      relDialog,
+      relTargetDef,
+      relTargetKey,
+      relColumns,
+      relMatchField,
+      relRows,
+      relEditable,
+      openRelation,
       rows,
       total,
       pageNum,

@@ -60,7 +60,23 @@ export interface TableDef {
   hasEnabledList?: boolean
   /** 前端硬编码隐藏：true 时不在后台配置左侧「数据表」菜单中显示（默认显示） */
   hidden?: boolean
+  /** 主→次级联：在操作列按此配置渲染弹出按钮，点击后按关联字段过滤 targetTable 的列表 */
+  relations?: TableRelation[]
   fields: FieldDef[]
+}
+
+/** 表间级联配置：任意表都可通过它获得「二级弹窗」能力，按钮文案/目标表/关联字段均可配 */
+export interface TableRelation {
+  /** 操作列按钮文案，如「执行配置」 */
+  label: string
+  /** 目标表 key：点击后弹出该表列表，其 schema 驱动二级列与表单 */
+  targetTable: BackendTableKey
+  /** 本表关联字段：取行值作为过滤键（如 intentCode） */
+  localField: string
+  /** 目标表过滤字段：接口按它筛选；默认与 localField 同名 */
+  remoteField?: string
+  /** 二级列表是否可编辑/复制/删除（默认 true）；false 时仅提供详情（只读） */
+  editable?: boolean
 }
 
 /** 通用：createdAt / updatedAt 只读时间字段 */
@@ -89,6 +105,14 @@ export const BACKEND_TABLES: TableDef[] = [
     title: '意图定义',
     idField: 'intentId',
     hasEnabledList: true,
+    // 行操作列弹出「执行配置」：按本行 intentCode 过滤 intentSkillConfig（其同名字段）
+    relations: [
+      {
+        label: '技能配置',
+        targetTable: 'intentSkillConfig',
+        localField: 'intentCode',
+      },
+    ],
     fields: [
       { prop: 'intentId', label: '意图ID', kind: 'number', isId: true, numberType: 'int', width: 90 },
       { prop: 'intentCode', label: '意图编码', kind: 'text', required: true, width: 140 },
