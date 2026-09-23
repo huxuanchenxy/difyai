@@ -368,7 +368,9 @@ export default defineComponent({
   },
   emits: ['update:visible'],
   setup(props, { emit }) {
-    const tables = BACKEND_TABLES
+    // 左侧「数据表」菜单数据源：按 schema 里的 hidden 字段过滤（前端硬编码显隐开关，
+    // 见 backendConfigSchema.ts 各表定义的 hidden?: boolean）；activeKey 默认取过滤后首项
+    const tables = BACKEND_TABLES.filter(t => !t.hidden)
     const activeKey = ref<BackendTableKey>(tables[0].key)
     const activeDef = computed<TableDef | undefined>(() =>
       tables.find(t => t.key === activeKey.value),

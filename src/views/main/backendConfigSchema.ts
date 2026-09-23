@@ -58,6 +58,8 @@ export interface TableDef {
   jsonMode?: boolean
   /** 是否提供启用列表接口 */
   hasEnabledList?: boolean
+  /** 前端硬编码隐藏：true 时不在后台配置左侧「数据表」菜单中显示（默认显示） */
+  hidden?: boolean
   fields: FieldDef[]
 }
 
@@ -139,6 +141,7 @@ export const BACKEND_TABLES: TableDef[] = [
     title: '意图-技能执行配置',
     idField: 'configId',
     hasEnabledList: true,
+    hidden: true, // 前端硬编码隐藏：不在后台配置左侧菜单中显示
     fields: [
       { prop: 'configId', label: '配置ID', kind: 'number', isId: true, numberType: 'int', width: 90 },
       { prop: 'intentCode', label: '意图编码', kind: 'text', required: true, width: 140, placeholder: '关联意图编码' },
