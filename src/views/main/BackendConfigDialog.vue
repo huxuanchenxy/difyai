@@ -347,12 +347,12 @@
       destroy-on-close
       :show-close="false"
       :z-index="10250"
-      custom-class="backend-config-form-dialog"
+      custom-class="backend-config-form-dialog backend-config-rel-dialog"
     >
       <template #title>
         <div class="bc-dialog-header">
           <span class="bc-dialog-title">
-            {{ relDialog.rel?.label }} - {{ relMatchField }}={{ relDialog.keyValue || '-' }}
+            {{ relDialog.rel?.label }}
           </span>
           <button
             type="button"
@@ -370,69 +370,72 @@
           <span class="bc-toolbar-sub">共 {{ relDialog.total }} 条</span>
         </div>
       </div>
-      <el-table
-        v-loading="relDialog.loading"
-        :data="relDialog.rows"
-        border
-        stripe
-        size="small"
-        :max-height="460"
-      >
-        <el-table-column
-          v-for="col in relColumns"
-          :key="col.prop"
-          :prop="col.prop"
-          :label="col.label"
-          :width="col.width"
-          :show-overflow-tooltip="true"
+      <!-- 表格区包进 bc-table-wrap：flex:1 撑满弹窗剩余高度，与主列表同构 -->
+      <div class="bc-table-wrap">
+        <el-table
+          v-loading="relDialog.loading"
+          :data="relDialog.rows"
+          border
+          stripe
+          size="small"
+          height="100%"
         >
-          <!-- 与主列表同规则：不解构，防止初始化阶段以 undefined scope 调用插槽 -->
-          <template #default="scope">
-            <span v-if="scope && scope.row">{{ formatCell(scope.row[col.prop], col.kind) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="操作"
-          width="200"
-          fixed="right"
-          align="center"
-        >
-          <template #default="scope">
-            <template v-if="scope && scope.row">
-              <!-- 详情始终提供；编辑/复制/删除受 relation.editable 控制（false = 只读） -->
-              <el-button
-                v-if="relEditable"
-                type="text"
-                size="small"
-                @click="openForm(scope.row, 'edit', relTargetKey)"
-              >
-                编辑
-              </el-button>
-              <el-button type="text" size="small" @click="openDetail(scope.row, relTargetKey)">详情</el-button>
-              <el-button
-                v-if="relEditable"
-                type="text"
-                size="small"
-                @click="handleCopy(scope.row, relTargetKey)"
-              >
-                复制
-              </el-button>
-              <el-button
-                v-if="relEditable"
-                type="text"
-                size="small"
-                class="bc-danger"
-                @click="handleDelete(scope.row, relTargetKey)"
-              >
-                删除
-              </el-button>
+          <el-table-column
+            v-for="col in relColumns"
+            :key="col.prop"
+            :prop="col.prop"
+            :label="col.label"
+            :width="col.width"
+            :show-overflow-tooltip="true"
+          >
+            <!-- 与主列表同规则：不解构，防止初始化阶段以 undefined scope 调用插槽 -->
+            <template #default="scope">
+              <span v-if="scope && scope.row">{{ formatCell(scope.row[col.prop], col.kind) }}</span>
             </template>
+          </el-table-column>
+          <el-table-column
+            label="操作"
+            width="200"
+            fixed="right"
+            align="center"
+          >
+            <template #default="scope">
+              <template v-if="scope && scope.row">
+                <!-- 详情始终提供；编辑/复制/删除受 relation.editable 控制（false = 只读） -->
+                <el-button
+                  v-if="relEditable"
+                  type="text"
+                  size="small"
+                  @click="openForm(scope.row, 'edit', relTargetKey)"
+                >
+                  编辑
+                </el-button>
+                <el-button type="text" size="small" @click="openDetail(scope.row, relTargetKey)">详情</el-button>
+                <el-button
+                  v-if="relEditable"
+                  type="text"
+                  size="small"
+                  @click="handleCopy(scope.row, relTargetKey)"
+                >
+                  复制
+                </el-button>
+                <el-button
+                  v-if="relEditable"
+                  type="text"
+                  size="small"
+                  class="bc-danger"
+                  @click="handleDelete(scope.row, relTargetKey)"
+                >
+                  删除
+                </el-button>
+              </template>
+            </template>
+          </el-table-column>
+          <template #empty>
+            <div class="bc-empty">暂无关联记录</div>
           </template>
-        </el-table-column>
-        <template #empty>
-          <div class="bc-empty">暂无关联记录</div>
-        </template>
-      </el-table>
+        </el-table>
+      </div>
       <!-- 二级列表分页：与主列表同布局同皮肤（bc-sub-pager 供全局块镜像分页修复/胶囊样式） -->
       <div class="bc-pager bc-sub-pager">
         <el-pagination
@@ -1533,6 +1536,19 @@ export default defineComponent({
    通过 popper-class 精确命中本弹层的下拉，用 !important 覆盖内联值抬到 dialog 之上。 */
 .backend-config-popper.el-popper {
   z-index: 10350 !important;
+}
+
+/* 二级级联弹窗定高：top 7vh + height 86vh → 离底距离 = 100-7-86 = 7vh，与离顶一致（垂直居中）；
+   内部三段式 flex：抬头/工具栏/分页固定，表格区（bc-table-wrap）撑满剩余高度 */
+.backend-config-rel-dialog {
+  height: 86vh;
+  max-height: 86vh;
+}
+
+.backend-config-rel-dialog .el-dialog__body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ===================== 二级级联弹窗的分页（服务端分页） =====================
