@@ -58,7 +58,14 @@
               @click="loadEnabledList"
               :loading="loading"
             >仅启用</el-button> -->
-            <el-button size="small" :loading="loading" @click="loadPage(1)">刷新</el-button>
+            <el-button
+              class="bc-ghost-btn"
+              size="small"
+              :loading="loading"
+              @click="loadPage(1)"
+            >
+              刷新
+            </el-button>
             <el-button type="primary" size="small" @click="openForm()">新增</el-button>
           </div>
         </div>
@@ -1109,6 +1116,164 @@ export default defineComponent({
 }
 .backend-config-dialog .el-table__body-wrapper::-webkit-scrollbar-thumb:hover {
   background: rgb(71, 85, 105, 0.9);
+}
+
+/* 次级描边按钮（刷新）：白底 + 浅描边 + 中性字，hover 转主色，与实心「新增」形成主次层级 */
+.backend-config-dialog .bc-ghost-btn.el-button {
+  background-color: #ffffff;
+  border-color: #d6def0;
+  color: #5b6b82;
+  border-radius: 8px;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.backend-config-dialog .bc-ghost-btn.el-button:hover,
+.backend-config-dialog .bc-ghost-btn.el-button:focus {
+  background-color: #eef4ff;
+  border-color: #2f6bff;
+  color: #2f6bff;
+}
+
+.backend-config-dialog .bc-ghost-btn.el-button:active {
+  background-color: #dbe8ff;
+  border-color: #1c56e6;
+  color: #1c56e6;
+}
+
+.backend-config-dialog .bc-ghost-btn.el-button.is-loading {
+  background-color: #ffffff;
+  border-color: #d6def0;
+  color: #9aa8bd;
+}
+
+/* ===================== 分页控件 ===================== */
+/* 修复箭头乱码方块：该版本 element-plus（1.0.2-beta.55）的 prev/next 与条・页下拉 caret
+   都是 element-icons 字体图标，但包内并未附带该字体文件（node_modules 全局无
+   element-icons.woff/ttf），::before 的私有区字符只能渲染成方块乱码。
+   这里去掉字体字形，用描边伪元素自绘左右 / 下箭头 */
+.backend-config-dialog .el-pagination .btn-prev .el-icon::before,
+.backend-config-dialog .el-pagination .btn-next .el-icon::before,
+.backend-config-dialog .el-pagination .el-select .el-input__icon::before {
+  content: none;
+}
+
+.backend-config-dialog .el-pagination .btn-prev .el-icon::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-top: -2px;
+  border-top: 1.6px solid currentColor;
+  border-left: 1.6px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.backend-config-dialog .el-pagination .btn-next .el-icon::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-top: -2px;
+  border-top: 1.6px solid currentColor;
+  border-right: 1.6px solid currentColor;
+  transform: rotate(45deg);
+}
+
+/* 展开时 el-select__caret 自身 rotate 180°，自绘箭头会随之翻向，无需额外处理 */
+.backend-config-dialog .el-pagination .el-select .el-input__icon::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-top: -3px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(45deg);
+}
+
+/* prev/next 与页码按钮：描边胶囊风格，hover/active 走 AI 主色 #2f6bff，
+   与工具栏「刷新 / 新增」同一套按钮语言 */
+.backend-config-dialog .el-pagination .btn-prev,
+.backend-config-dialog .el-pagination .btn-next,
+.backend-config-dialog .el-pagination .el-pager li {
+  border: 1px solid #d6def0;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #5b6b82;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.backend-config-dialog .el-pagination .btn-prev:hover:not([disabled]),
+.backend-config-dialog .el-pagination .btn-next:hover:not([disabled]),
+.backend-config-dialog .el-pagination .el-pager li:hover {
+  color: #2f6bff;
+  border-color: #2f6bff;
+  background: #eef4ff;
+}
+
+.backend-config-dialog .el-pagination .btn-prev[disabled],
+.backend-config-dialog .el-pagination .btn-next[disabled] {
+  color: #c0c8d4;
+  border-color: #e5eaf2;
+  background: #f7f9fc;
+}
+
+.backend-config-dialog .el-pagination .el-pager li.active {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+}
+
+/* 主色按钮（新增 / 保存）统一为 AI 助手主色：Element 默认 primary 走 DataV 深色主题变量，
+   与本弹层浅色风格脱节；这里对齐登录页 / 对话窗的 #2f6bff 主色体系，两个弹层观感一致。
+   （两个 el-dialog 均 append-to-body，scoped 样式穿不到，故写在全局块里用 custom-class 精确限定） */
+.backend-config-dialog .el-button--primary,
+.backend-config-form-dialog .el-button--primary {
+  background-color: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+  border-radius: 8px;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.backend-config-dialog .el-button--primary:hover,
+.backend-config-dialog .el-button--primary:focus,
+.backend-config-form-dialog .el-button--primary:hover,
+.backend-config-form-dialog .el-button--primary:focus {
+  background-color: #1c56e6;
+  border-color: #1c56e6;
+  color: #ffffff;
+}
+
+.backend-config-dialog .el-button--primary:active,
+.backend-config-form-dialog .el-button--primary:active {
+  background-color: #1a4fd1;
+  border-color: #1a4fd1;
+  color: #ffffff;
+}
+
+/* plain 变体（表单里的「Markdown 编辑」按钮）：浅蓝底 + 主色字，hover 反转为实心 */
+.backend-config-form-dialog .el-button--primary.is-plain {
+  background-color: #eef4ff;
+  border-color: #c6dbff;
+  color: #2f6bff;
+}
+
+.backend-config-form-dialog .el-button--primary.is-plain:hover,
+.backend-config-form-dialog .el-button--primary.is-plain:focus {
+  background-color: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+}
+
+/* 禁用 / 加载中（保存提交时）：淡主色，保持同色系不断层 */
+.backend-config-dialog .el-button--primary.is-disabled,
+.backend-config-dialog .el-button--primary.is-loading,
+.backend-config-form-dialog .el-button--primary.is-disabled,
+.backend-config-form-dialog .el-button--primary.is-loading {
+  background-color: #a9c3ff;
+  border-color: #a9c3ff;
+  color: #ffffff;
 }
 
 /* 删除确认框（ElMessageBox）层级修复：
