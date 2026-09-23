@@ -9,19 +9,20 @@
       role="backend_ops"
       :md-editor="true"
       md-editor-storage-key="difyai-md-doc"
-    />
-
-    <!-- 后台配置层面入口：右上角悬浮图标按钮（同对话窗「收起会话列表」样式），唤起 BackendConfigDialog -->
-    <div class="admin-entry">
-      <button
-        type="button"
-        class="admin-entry-btn"
-        title="后台配置"
-        @click="openBackendConfig"
-      >
-        <IconSettings />
-      </button>
-    </div>
+    >
+      <!-- 后台配置入口：插入对话窗顶栏操作区（收起会话列表按钮同排），
+           与 DifyRealDialog 顶部按钮风格完全一致，随主题 / 字号缩放 -->
+      <template #header-actions>
+        <button
+          type="button"
+          class="admin-entry-btn"
+          title="后台配置"
+          @click="openBackendConfig"
+        >
+          <IconSettings />
+        </button>
+      </template>
+    </DifyRealDialog>
 
     <BackendConfigDialog v-model:visible="backendConfigVisible" />
   </div>
@@ -65,24 +66,19 @@ export default defineComponent({
   background-color: #f6f8fc;
 }
 
-.admin-entry {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-  z-index: 100;
-}
-
-/* 与 DifyRealDialog 内 .sidebar-toggle-btn 同款的圆角图标按钮；
-   该按钮在 .custom-dialog 之外，取不到 --chat-* CSS 变量，故直接写死同款色值 */
+/* 后台配置入口按钮：与 DifyRealDialog 内 .sidebar-toggle-btn 完全同款。
+   按钮通过 #header-actions 插槽渲染在 .custom-dialog 内部，
+   可直接继承 --chat-primary / --chat-primary-soft 主题变量与 --chat-font-scale 字号缩放 */
 .admin-entry-btn {
-  width: 30px;
-  height: 30px;
+  flex-shrink: 0;
+  width: calc(30px * var(--chat-font-scale, 1));
+  height: calc(30px * var(--chat-font-scale, 1));
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: calc(9px * var(--chat-font-scale, 1));
   background: transparent;
   color: #7d8b9f;
   cursor: pointer;
@@ -90,12 +86,12 @@ export default defineComponent({
 }
 
 .admin-entry-btn:hover {
-  background-color: #eef4ff;
-  color: #2f6bff;
+  background-color: var(--chat-primary-soft, #eef4ff);
+  color: var(--chat-primary, #2f6bff);
 }
 
 .admin-entry-btn svg {
-  width: 18px;
-  height: 18px;
+  width: calc(18px * var(--chat-font-scale, 1));
+  height: calc(18px * var(--chat-font-scale, 1));
 }
 </style>

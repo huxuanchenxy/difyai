@@ -92,6 +92,9 @@
                   <span class="chat-main-title">{{ headerTitle }}</span>
                 </div>
                 <div class="chat-main-actions">
+                  <!-- 宿主自定义顶栏操作区（如后台配置入口）：与关闭按钮同排，
+                       处于 .custom-dialog 内，可继承 --chat-* 主题变量与 --chat-font-scale 缩放 -->
+                  <slot name="header-actions"></slot>
                   <button
                     v-if="!noMask && !inline"
                     class="round-icon-btn"
