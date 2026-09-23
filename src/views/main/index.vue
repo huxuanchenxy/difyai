@@ -15,15 +15,19 @@
       <template #header-actions>
         <button
           type="button"
-          class="header-icon-btn"
+          class="chat-icon-btn"
           title="后台配置"
           @click="openBackendConfig"
         >
           <IconSettings />
         </button>
+      </template>
+
+      <!-- 退出登录：与侧栏底部用户信息（头像 / 用户名 / 角色）同排靠右 -->
+      <template #sidebar-footer>
         <button
           type="button"
-          class="header-icon-btn"
+          class="chat-icon-btn"
           title="退出登录"
           @click="handleLogout"
         >
@@ -98,10 +102,11 @@ export default defineComponent({
   background-color: #f6f8fc;
 }
 
-/* 顶栏图标按钮（后台配置 / 退出登录）：与 DifyRealDialog 内 .sidebar-toggle-btn 完全同款。
-   按钮通过 #header-actions 插槽渲染在 .custom-dialog 内部，
+/* 对话窗宿主图标按钮（顶栏后台配置 / 侧栏底部退出登录）：
+   与 DifyRealDialog 内 .sidebar-toggle-btn 完全同款。
+   按钮通过插槽渲染在 .custom-dialog 内部，
    可直接继承 --chat-primary / --chat-primary-soft 主题变量与 --chat-font-scale 字号缩放 */
-.header-icon-btn {
+.chat-icon-btn {
   flex-shrink: 0;
   width: calc(30px * var(--chat-font-scale, 1));
   height: calc(30px * var(--chat-font-scale, 1));
@@ -117,12 +122,12 @@ export default defineComponent({
   transition: background-color 0.15s, color 0.15s;
 }
 
-.header-icon-btn:hover {
+.chat-icon-btn:hover {
   background-color: var(--chat-primary-soft, #eef4ff);
   color: var(--chat-primary, #2f6bff);
 }
 
-.header-icon-btn svg {
+.chat-icon-btn svg {
   width: calc(18px * var(--chat-font-scale, 1));
   height: calc(18px * var(--chat-font-scale, 1));
 }

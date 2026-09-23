@@ -75,6 +75,9 @@
                   <span class="user-name" :title="userDisplayName">{{ userDisplayName }}</span>
                   <span v-if="showUserSub" class="user-sub">{{ roleLabel }}</span>
                 </span>
+                <!-- 宿主自定义侧栏底部操作区（如退出登录）：user-info 为 flex:1，
+                     插槽内容自然靠右对齐，与用户信息同排 -->
+                <slot name="sidebar-footer"></slot>
               </div>
             </aside>
 
