@@ -1,0 +1,5 @@
+// 主题与基础 reset（内含 element-plus theme-chalk 组件样式）
+@import './themes/index';
+
+// 自定义字体（登录页使用「思源黑体」）
+@import '@/assets/fonts/font.scss';

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+website/
+es/
+lib/
+public/
+src/assets/
+*.local
+.DS_Store

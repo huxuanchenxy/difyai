@@ -1,0 +1,325 @@
+@import '../color/colors';
+@import './var-scss';
+
+// Common
+:root {
+  --datav-font-color: #262c33;
+  --datav-font-color-disabled: #424447;
+  --datav-main-color: #005497;
+  --datav-error-color: #f43;
+  --datav-red-color: #f15532;
+  --datav-warn-color: #f27a24;
+  --datav-gray-color: #90a0ae;
+  --datav-dark-color: #c8c8c8;
+  --datav-success-color: #50e3c2;
+  --datav-main-hover-color: #BEE2FF;
+  --datav-main-click-color: #005497;
+  --datav-pop-bg-color: #1b3964;
+  --datav-slider-color: #74f0ff;
+  --datav-ft-border: 1px solid #3a4659;
+  --datav-loading-color: #1996df;
+  --datav-nav-bg: #13161a;
+  --datav-nav-bg-active: #1d2126;
+  --datav-nav-bg-hover: #21262b;
+  --datav-left-nav-bg: #F0F4FD;
+  --datav-left-nav-hover-bg: transparent;
+  --datav-left-nav-active-bg: #fff;
+  --datav-body-bg: #c8c8c8;
+  --datav-bgcolor-1: #0b0c0d;
+  --datav-bgcolor-2: #c8c8c8;
+  --datav-component-bg: #303640;
+  --datav-component-bg-1: #171b22;
+  --datav-border-color: #c8c8c8;
+  --datav-border: 1px solid var(--datav-border-color);
+  --datav-border-primary: 1px solid var(--datav-main-color);
+  --datav-border-dark: 1px solid #c8c8c8;
+  --datav-border-disabled: 1px solid #323437;
+  --datav-outline: 1px solid #888888;
+  --datav-shadow-color: #000;
+  --datav-shadow: 0 0 10px -6px #000;
+  --datav-menu-bg: #fff;
+  --datav-menu-bg-hover: var(--datav-bgcolor-2);
+  --datav-menu-color-hover: #00baff;
+  --datav-menu-color-disabled: #576369;
+  --datav-layer-wp-bg: #FFFFFF;
+  --datav-layer-bg: #F0F4FD;
+  --datav-layer-bg-dark: #dcdcdc;
+  --datav-layer-item-bg: #dcdcdc;
+  --datav-layer-item-color-locked: #576369;
+  --datav-layer-item-thumbail-bg: #fff;
+  --datav-layer-toolbar-bg: #dcdcdc;
+  --datav-layer-toolbar-bg-hover: #3a4650;
+  --datav-layer-toolbar-border: 1px solid #c8c8c8;
+  --datav-layer-toolbar-icon-color: #282f3a;
+  --datav-layer-input-bg: #363c48;
+  --datav-config-bg: #fff;
+  --datav-config-border: 1px solid #c8c8c8;
+}
+
+// GUI
+/* stylelint-disable no-duplicate-selectors */
+:root {
+  --datav-gui-primary-color: #005497;
+  --datav-gui-error-color: #ff4f43;
+  --datav-gui-hover-color: #26a5ff;
+  --datav-gui-active-color: #2693ff;
+  --datav-gui-disabled-color: #424447;
+  --datav-gui-bgcolor-front: hsl(215, 15%, 13%); // #1c2026
+  --datav-gui-bgcolor-front-lighter: hsl(215, 15%, 28%); // #3d4652
+  --datav-gui-bgcolor-back: #fff; // #111417
+  --datav-gui-bgcolor-back-darker: hsl(0, 0%, 0%); // #000
+  --datav-gui-bgcolor-hover: #1b3964;
+  --datav-gui-component-bgcolor: #fff;
+  --datav-gui-component-bgcolor-darker: #262c32;
+  --datav-gui-component-bgcolor-hover: #303640;
+  --datav-gui-component-bgcolor-active: #262b33;
+  --datav-gui-component-bgcolor-disabled: #13161a;
+  --datav-gui-font-color-base: #a1aeb3;
+  --datav-gui-font-color-1: #262c33;
+  --datav-gui-font-color-2: #262c33;
+  --datav-gui-font-color-3: #262c33;
+  --datav-gui-font-color-description: #5c6366;
+  --datav-gui-font-color-disabled: #424447;
+  --datav-gui-font-color-placeholder: #c0c4cc;
+  --datav-gui-border-color: #c8c8c8;
+  --datav-gui-editor-border: 1px solid #282f3a;
+  --datav-gui-editor-icon-color: #bfbfbf;
+  --datav-gui-editor-bgcolor-disabled: #1f2329;
+  --datav-gui-fullscreen-bgcolor: #000;
+  --datav-gui-slider-track-color: linear-gradient(to right, #74f0ff, #005497);
+  --datav-gui-component-border-color: #0b0c0d;
+  --datav-gui-component-border: 1px solid var(--datav-gui-component-border-color);
+  --datav-gui-select-option-bgcolor: #1d2126;
+  --datav-gui-select-option-bgcolor-hover: #1b3964;
+  --datav-gui-select-color-selected: #fff;
+  --datav-gui-cp-border: 1px solid #141210;
+  --datav-gui-cp-title-padding-left: 0;
+  --datav-gui-new-select-border: 1px solid #282f3a;
+  --datav-gui-new-select-bgcolor: #0e1013;
+  --datav-gui-empty-color: #909399;
+}
+
+$color-white: #fff;
+$color-black: #000;
+$color-gray: #90a0ae;
+$color-dark: #262c33;
+$color-red: #f15532;
+
+$color-primary: $blue-6;
+$color-success: $green-6;
+$color-warning: $warn-6;
+$color-error: $red-6;
+$color-info: $color-gray;
+
+// Base
+$font-color: #bcc9d4;
+$font-color-placeholder: #c0c4cc;
+$font-color-disabled: #424447;
+$font-size: 12px;
+$header-font-size: $font-size;
+$hover-color: #BEE2FF;
+$nav-color: #b9c2cc;
+$nav-border-color: #27343e;
+
+// Background
+$background-color: #171b22;
+$background-color-dark: #1d262e;
+$background-color-secondary: #303640;
+
+// Border
+$border-color: #3a4659;
+$border: 1px solid $border-color;
+$border-outline: 1px solid #0b0c0d;
+$border-dark: 1px solid #000;
+$border-primary: 1px solid $color-primary;
+
+// Shadow
+$shadow-color: #000;
+$shadow: 0 0 10px -6px $shadow-color;
+$shadow-secondary: 0 0 8px -4px $shadow-color;
+
+// Input
+$input-color-hover: $color-primary;
+$input-font-color: $font-color;
+$input-description-font-color: #5c6366;
+$input-prepend-bgcolor: #39414d;
+$input-border-color: #0b0c0d;
+$input-border-disabled: 1px solid #323437;
+$input-bgcolor: $color-dark;
+$input-bgcolor-disabled: $color-dark;
+
+// Checkbox
+$checkbox-border-color-checked: $color-primary;
+
+// Scrollbar
+$scrollbar-thumb-color: #434b55;
+$scrollbar-thumb-width: 4px;
+$scrollbar-thumb-height: 4px;
+
+// tooltip-popover
+$tooltip-popover-color: #fff;
+$tooltip-popover-bgcolor: #1b3964;
+$tooltip-popover-shadow-color: #000;
+
+// Popover
+$popover-bgcolor: #303640;
+$popover-bgcolor-dark: $color-dark;
+
+// Icon
+$icon-color: $color-white;
+
+// Message
+$message-font-color: #fff;
+$message-bgcolor-success: #1b3964;
+$message-bgcolor-warning: #593c27;
+$message-bgcolor-error: #5d2b3e;
+$message-border-color-success: $color-primary;
+$message-border-color-warning: $color-warning;
+$message-border-color-error: $color-red;
+
+// Slider
+$slider-color: #74f0ff;
+$slider-runway-color: #bcc9d4;
+$slider-track-color: linear-gradient(to right, $slider-color, $color-primary);
+
+// Button
+$button-font-color: $color-white;
+$button-shade-percent-active: 10% !default;
+$button-font-color-disabled: rgba(255, 255, 255, 0.5);
+$button-border-color-disabled: #323437;
+$button-bgcolor-disabled: #262c33;
+
+// Loading
+$loading-color: #1996df;
+
+// Switch
+$switch-height: 28px;
+$switch-bgcolor: #0b0c0d;
+$switch-border-color: #303740;
+
+// Select
+$select-font-color: #a1aeb3;
+$select-bgcolor: #111417;
+$select-option-bgcolor: #1d2126;
+$select-option-bgcolor-hover: #1b3964;
+$select-color-selected: #fff;
+
+// Tabs
+$tabs-font-color: $font-color;
+$tabs-bgcolor-active: #14161a;
+$tabs-nav-bgcolor: #191c21;
+$tabs-nav-bgcolor-hover: #21262b;
+$tabs-bar-bgcolor-active: $color-primary;
+$tabs-content-bgcolor: #13161a;
+$datav-tabs-nav-bgcolor: #13161a;
+$datav-tabs-nav-bgcolor-active: #1d2126;
+
+// Collapse
+$collapse-font-color: $font-color;
+$collapse-bgcolor: #13161a;
+$collapse-border-color: #141210;
+
+// Drawer
+$drawer-bgcolor: #1d2126;
+$drawer-title-color: $color-primary;
+
+// MonacoEditor
+$monaco-border-color: #282f3a;
+$monaco-suggest-color: #d4d4d4;
+$monaco-bgcolor-readonly: #1f2329;
+$monaco-fullscreen-dialog-bgcolor: #222425;
+$monaco-action-color: #bfbfbf;
+
+/* Editor
+-------------------------- */
+// Header
+$header-color: #a1aeb3;
+$header-icon-color: #fff;
+$header-bgcolor: #1d1e1f;
+$header-btn-bgcolor: #303640;
+$header-btn-bgcolor-hover: #414750;
+
+// Layer
+$panel-bgcolor: #1d2126;
+$panel-font-color: $font-color;
+$panel-img-border-color: #37bfff;
+$panel-bgcolor-dark: #0a0b0d;
+
+$layer-bgcolor: #2e343c;
+$layer-font-color: #fff;
+$layer-toolbar-bgcolor: #20242a;
+$layer-toolbar-bgcolor-hover: #3a4650;
+$layer-toolbar-icon-color: #282f3a;
+$layer-toolbar-border: 1px solid #282f3a;
+$layer-manager-bgcolor: #1b1f25;
+$layer-manager-bgcolor-hide: #1c1f25;
+$layer-manager-color-hide: #576369;
+$layer-thumbail-bgcolor: #282a30;
+$layer-input-bgcolor: #363c48;
+
+$config-panel-bgcolor: #1c1f25;
+$config-manager-bgcolor: #191c21;
+$config-panel-border: 1px solid #282f3a;
+$config-status-color: $loading-color;
+$config-dot-list-bgcolor: #4c5768;
+$config-dot-bgcolor: #7d8081;
+
+$page-config-font-color: #fff;
+$page-config-bgcolor: #1c2026;
+$page-config-bgcolor-secondary: #262c33;
+
+// ContextMenu
+$context-menu-font-color: $font-color;
+$context-menu-color-hover: #00baff;
+$context-menu-color-disable: #576369;
+$context-menu-bgcolor: #27343e;
+$context-menu-bgcolor-hover: #1d262e;
+$context-menu-divider-bgcolor: #3a4659;
+
+// Footer
+$footer-bgcolor: #222528;
+$footer-color: $font-color;
+$footer-shortcut-color: #08a1db;
+$footer-shortcut-color-hover: #0b0c0d;
+$footer-shortcut-bgcolor: #262b33;
+
+/* Editor End
+-------------------------- */
+
+// State
+$state-color: #576369;
+
+// DataV GUI
+$gui-font-size: 12px;
+$gui-font-color: #a1aeb3;
+$gui-font-color-1: #fff;
+$gui-font-color-2: #c3d3d9;
+$gui-font-color-3: #737c80;
+$gui-primary-color: #005497;
+$gui-hover-color: #26a5ff;
+$gui-error-color: #ff4f43;
+$gui-active-color: #2693ff;
+$gui-disabled-color: #424447;
+$gui-component-bgcolor: $color-dark;
+$gui-component-bgcolor-hover: $background-color-secondary;
+$gui-component-border-color: #0b0c0d;
+$gui-cover-color: rgba(0, 0, 0, 0.75);
+$gui-bgcolor-dark: #111417;
+
+$field-height: 28px;
+$field-help-color: #a1aeb3;
+$field-container-width: 192px;
+$field-collapse-header-bgcolor: #1c2026;
+$field-collapse-arrow-color: #a1aeb3;
+$field-collapse-item-bgcolor: #111417;
+$field-border-color: rgba(52, 52, 52, 0.5);
+
+$ruler-bg: #0e1013;
+$ruler-tag-bg: rgba(64, 116, 180, 1);
+$ruler-line-bg: rgba(0, 173, 255, 0.84);
+$ruler-mark-color: #3a4659;
+$ruler-font-color: rgba(161, 174, 179, 0.8);
+
+$datav-data-form-bgcolor: #0e1013;
+$datav-data-filter-color: #566273;
+$datav-data-filter-border: 1px solid #566273;

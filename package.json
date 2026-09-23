@@ -1,0 +1,55 @@
+{
+    "name": "difyai",
+    "version": "0.0.1",
+    "description": "Dify AI 应用与后台配置独立站点（自 dashboard 提取）",
+    "scripts": {
+        "dev": "cross-env NODE_ENV=development vite",
+        "build": "cross-env NODE_ENV=production vue-tsc --noEmit && vite build",
+        "build:fast": "cross-env NODE_ENV=production vite build",
+        "staging": "cross-env NODE_ENV=staging vue-tsc --noEmit && vite build --mode staging",
+        "serve": "vite preview",
+        "lint": "yarn lint:type && yarn lint:code",
+        "lint:type": "vue-tsc --noEmit",
+        "lint:code": "eslint --fix 'src/**/*.{js,ts,vue}'"
+    },
+    "dependencies": {
+        "axios": "0.21.4",
+        "dayjs": "1.10.6",
+        "echarts": "5.2.0",
+        "element-plus": "1.0.2-beta.55",
+        "file-saver": "2.0.5",
+        "flint-chart": "0.4.1",
+        "highlight.js": "11.5.1",
+        "marked": "4.3.0",
+        "md-editor-v3": "2.2.0",
+        "naive-ui": "2.30.8",
+        "typescript-cookie": "1.0.3",
+        "vue": "3.2.20",
+        "vue-router": "4.0.12"
+    },
+    "devDependencies": {
+        "@types/file-saver": "2.0.5",
+        "@types/marked": "4.3.0",
+        "@typescript-eslint/eslint-plugin": "4.33.0",
+        "@typescript-eslint/parser": "4.33.0",
+        "@vitejs/plugin-vue": "1.9.3",
+        "@vue/compiler-sfc": "3.2.20",
+        "cross-env": "7.0.3",
+        "eslint": "7.32.0",
+        "eslint-plugin-import": "2.24.2",
+        "eslint-plugin-vue": "7.18.0",
+        "sass": "1.42.1",
+        "typescript": "4.4.3",
+        "vite": "2.6.14",
+        "vue-tsc": "0.28.6"
+    },
+    "resolutions": {
+        "@types/lodash": "4.14.170"
+    },
+    "browserslist": [
+        "> 2%",
+        "last 2 versions",
+        "not IE 11"
+    ],
+    "license": "MIT"
+}
