@@ -2882,13 +2882,19 @@ export default defineComponent({
     const MCP_IMAGE_BASE = `http://${MCP_IMAGE_HOST}:${MCP_IMAGE_PORT}`
     const MCP_PLACEHOLDER_RE = /http:\/\/YOUR_SERVER_IP:MCP_PORT/g
 
-    // 文件类型 → 查看器 base 映射（配置项，后续扩展只需加键 / 配 env）：1=Markdown、2=PDF、3=图片(PNG 等)、4=视频…
+    // 文件类型 → 查看器 base 映射（配置项，后续扩展只需加键 / 配 env）：1=Markdown、2=视频、3=图片(PNG 等)、4=…
     // 某类型 base 为空（未配置）时，其文件路径保持纯文本不链接；配好 base 后自动变可点击链接。改 .env 需重启 dev 生效
     const FILE_LINK_BASE_MAP: Record<string, string> = {
       1: import.meta.env.VITE_APP_MARKDOWN_LINK_BASE || 'http://10.89.33.97:3344/#/markdown/',
-      2: import.meta.env.VITE_APP_PDF_LINK_BASE || '',
+      2: import.meta.env.VITE_APP_VIDEO_LINK_BASE || '',
       3: import.meta.env.VITE_APP_IMAGE_LINK_BASE || '',
-      4: import.meta.env.VITE_APP_VIDEO_LINK_BASE || '',
+      4: '',
+    }
+
+    // 拼接前需去掉文件全路径末段文件名的类型：2=视频（查看器按目录展示，
+    // 末段如 /clip.mp4 不固定，去掉后指向文件所在目录）
+    const FILE_LINK_STRIP_FILENAME: Record<string, boolean> = {
+      2: true,
     }
 
     // 自定义 marked renderer：拦截 MCP 占位符图片转为「点击打开图片」超链接，
@@ -2946,8 +2952,15 @@ export default defineComponent({
               if (!path) continue
               const typeCode = cleanTableCell(cells[typeIdx])
               const base = FILE_LINK_BASE_MAP[typeCode]
-              const linked = base && !path.startsWith('[') ? `[${path}](<${base}${path}>)` : path
-              out.push(`- ${linked}`)
+              if (base && !path.startsWith('[')) {
+                // 展示文本保留原始全路径；链接 href 按类型去掉末段文件名（如视频 /clip.mp4）
+                const hrefPath = FILE_LINK_STRIP_FILENAME[typeCode]
+                  ? path.replace(/\/[^/]*$/, '')
+                  : path
+                out.push(`- [${path}](<${base}${hrefPath}>)`)
+              } else {
+                out.push(`- ${path}`)
+              }
             }
             i = j
             handled = true
@@ -2977,6 +2990,8 @@ export default defineComponent({
     const linkViewerTitle = ref('')
 
     const openLinkViewer = (url: string, title = '') => {
+      // 最终在弹层 / iframe 中打开的完整链接，控制台留一份便于核对拼接结果
+      console.log('[LinkViewer] 最终链接:', url)
       linkViewerUrl.value = url
       linkViewerTitle.value = title
       linkViewerVisible.value = true
