@@ -2,7 +2,7 @@ import * as loginJson from '@/../public/templates/login.json'
 
 import { RouteRecordRaw, createRouter, createWebHashHistory } from 'vue-router'
 
-import { getToken } from '@/utils/token-util'
+import { getToken, getUrlAuthToken } from '@/utils/token-util'
 import { globalConfig } from '@/config'
 import { loginSettingModel } from './loginSettingModel'
 
@@ -50,6 +50,11 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (setting.needLogin) {
+    // 免登录访问：URL 上带 token（如 /#/?token=xxx）时直接放行，登录态与接口鉴权由该 token 承担
+    if (getUrlAuthToken()) {
+      next(to.path === '/login' ? { path: '/' } : undefined)
+      return
+    }
     const hasToken = getToken()
     if (hasToken) {
       if (to.path === '/login') {

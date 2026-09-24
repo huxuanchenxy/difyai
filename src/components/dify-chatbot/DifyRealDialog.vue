@@ -1048,13 +1048,16 @@ export default defineComponent({
       const name = userDisplayName.value || '我'
       return /^[a-z]/i.test(name) ? name.charAt(0).toUpperCase() : name.charAt(0)
     })
-    // 未登录（显示名即角色名）时不重复展示第二行，避免出现「使用人员 / 使用人员」
-    const showUserSub = computed(() => userDisplayName.value !== roleLabel.value)
+    // 未登录（显示名即角色名）或匿名访问时不展示第二行角色副标题，避免重复 / 暴露角色名
+    const showUserSub = computed(() => !props.anonymous && userDisplayName.value !== roleLabel.value)
     const refreshUserDisplayName = () => {
-      // 匿名访问（如发布页）：loginAccount 参数是 URL token，不作为显示名；
-      // 依次回退角色中文名 → 「匿名用户」，避免侧栏底部 / 头像处出现空白
-      const account = props.anonymous ? '' : getLoginAccount()
-      userDisplayName.value = account || roleLabel.value || (props.anonymous ? '匿名用户' : '')
+      // 匿名访问（如免登录 URL token）：统一显示「匿名用户」，不取 loginAccount、也不回退角色中文名
+      if (props.anonymous) {
+        userDisplayName.value = '匿名用户'
+        return
+      }
+      const account = getLoginAccount()
+      userDisplayName.value = account || roleLabel.value || ''
     }
 
     // 会话列表右侧时间文案：把后端 createdOn 归一化为「MM-DD HH:mm」（跨年补年份）

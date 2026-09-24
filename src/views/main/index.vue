@@ -10,11 +10,16 @@
       :md-editor="true"
       md-editor-storage-key="difyai-md-doc"
       :text-welcome="false"
+      :login-account="urlToken"
+      :auth-token="urlToken"
+      :anonymous="isNoAuthAccess"
     >
       <!-- 后台配置入口：插入对话窗顶栏操作区（收起会话列表按钮同排），
-           与 DifyRealDialog 顶部按钮风格完全一致，随主题 / 字号缩放 -->
+           与 DifyRealDialog 顶部按钮风格完全一致，随主题 / 字号缩放；
+           匿名访问（免登录 URL token）无登录态，隐藏该入口 -->
       <template #header-actions>
         <button
+          v-if="!isNoAuthAccess"
           type="button"
           class="chat-icon-btn"
           title="后台配置"
@@ -24,9 +29,11 @@
         </button>
       </template>
 
-      <!-- 退出登录：与侧栏底部用户信息（头像 / 用户名 / 角色）同排靠右 -->
+      <!-- 退出登录：与侧栏底部用户信息（头像 / 用户名 / 角色）同排靠右；
+           匿名访问无登录态，隐藏退出按钮 -->
       <template #sidebar-footer>
         <button
+          v-if="!isNoAuthAccess"
           type="button"
           class="chat-icon-btn"
           title="退出登录"
@@ -66,6 +73,7 @@ import { useRouter } from 'vue-router'
 import DifyRealDialog from '@/components/dify-chatbot/DifyRealDialog.vue'
 import BackendConfigDialog from './BackendConfigDialog.vue'
 import { UserStore } from '@/domains/user'
+import { getUrlAuthToken } from '@/utils/token-util'
 import { IconSettings, IconLogout } from '@/icons'
 
 export default defineComponent({
@@ -78,6 +86,10 @@ export default defineComponent({
   },
   setup() {
     const router = useRouter()
+    // 免登录访问：URL 上带 ?token=xxx 时，该 token 同时作为接口的 account(loginAccount) 与 token 下发，
+    // 后台已有免 token 机制；无 URL token 时为空串，DifyRealDialog 自动回退 localStorage 登录态
+    const urlToken = getUrlAuthToken()
+    const isNoAuthAccess = !!urlToken
     // 对话窗始终内嵌显示
     const showDialog = ref(true)
     const backendConfigVisible = ref(false)
@@ -100,6 +112,8 @@ export default defineComponent({
       }
     }
     return {
+      urlToken,
+      isNoAuthAccess,
       showDialog,
       backendConfigVisible,
       openBackendConfig,
