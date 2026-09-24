@@ -3,3 +3,81 @@
 
 // 自定义字体（登录页使用「思源黑体」）
 @import '@/assets/fonts/font.scss';
+
+// ===================== Element Plus 字体图标缺失修复（Message / MessageBox） =====================
+// 与后台配置分页箭头同根因：element-plus 1.0.2-beta.55 的 ElMessage 类型图标、
+// ElMessageBox 状态/关闭图标都是 element-icons 字体图标（::before 私有区字符），
+// 但包内未附带字体文件，渲染成方框「叉」状乱码。
+// 这里去掉字体字形，用普通 Unicode 字符（✓ ! i ✕）+ 圆形徽标替代；
+// 二者均 teleport 挂 body、全站共用，故放站点级样式（登录页 toast 同样受益）。
+.el-message__icon::before,
+.el-message-box__status::before,
+.el-message__closeBtn::before,
+.el-message-box__close::before {
+  content: none;
+}
+
+// ElMessage：类型图标换成实心圆徽标
+.el-message .el-message__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  font-style: normal;
+}
+
+.el-message .el-message__icon::after {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
+}
+
+.el-message .el-icon-success::after { content: '✓'; background: #22c55e; }
+.el-message .el-icon-info::after { content: 'i'; background: #90a4c0; }
+.el-message .el-icon-warning::after { content: '!'; background: #f59e0b; }
+.el-message .el-icon-error::after { content: '✕'; background: #f56c6c; }
+
+// ElMessageBox：左侧状态图标（删除确认的 warning 圈）同样换圆徽标
+.el-message-box__status {
+  font-style: normal;
+}
+
+.el-message-box__status::after {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
+}
+
+.el-message-box__status.el-icon-success::after { content: '✓'; background: #22c55e; }
+.el-message-box__status.el-icon-info::after { content: 'i'; background: #90a4c0; }
+.el-message-box__status.el-icon-warning::after { content: '!'; background: #f59e0b; }
+.el-message-box__status.el-icon-error::after { content: '✕'; background: #f56c6c; }
+
+// 右上角关闭钮：el-icon-close 本就是叉，用普通 Unicode 字符呈现
+.el-message-box__close,
+.el-message__closeBtn {
+  font-style: normal;
+}
+
+.el-message-box__close::after,
+.el-message__closeBtn::after {
+  content: '✕';
+  font-size: 14px;
+  line-height: 1;
+}
