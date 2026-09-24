@@ -201,6 +201,7 @@
                           <div
                             class="content-text"
                             :class="{ 'error-text': message.isError }"
+                            @click="handleContentLinkClick"
                             v-html="formatContent(message.content)"
                           ></div>
                           <div v-if="message.flintSpecs && message.flintSpecs.length > 0" class="flint-charts-container">
@@ -333,6 +334,7 @@
                           <div
                             v-if="message.content"
                             class="interrupted-question content-text"
+                            @click="handleContentLinkClick"
                             v-html="formatContent(message.content)"
                           ></div>
                           <!-- actions_hint 非空：后端在等显式动作，提供确认/取消按钮；
@@ -536,6 +538,14 @@
         :storage-key="mdEditorStorageKey"
       />
 
+      <!-- 链接查看弹层：AI 回复中的 http/https 链接改为本地弹层内嵌展示（占视口 90%），
+           不再跳新浏览器标签页；头部保留「新窗口」按钮作为兜底（如目标站拒绝 iframe 嵌入时） -->
+      <LinkViewerDialog
+        v-model:visible="linkViewerVisible"
+        :url="linkViewerUrl"
+        :title="linkViewerTitle"
+      />
+
       <!-- 自定义二次确认弹窗：替换 ElMessageBox，避免被自绘对话框遮挡 / 左上角错位 -->
       <div
         v-if="confirmDialogVisible"
@@ -583,6 +593,7 @@ import ChatBottle from '@/icons/chat-bottle.vue'
 import ChatSidebar from '@/icons/chat-sidebar.vue'
 import ChatArrowDown from '@/icons/chat-arrow-down.vue'
 import MdEditorDialog from './MdEditorDialog.vue'
+import LinkViewerDialog from './LinkViewerDialog.vue'
 import { getFontScale } from './font-scale'
 import { assembleECharts } from 'flint-chart'
 import type { ChartAssemblyInput } from 'flint-chart'
@@ -759,6 +770,7 @@ export default defineComponent({
     ChatSidebar,
     ChatArrowDown,
     MdEditorDialog,
+    LinkViewerDialog,
   },
   props: {
     title: {
@@ -2959,6 +2971,28 @@ export default defineComponent({
       return marked.parse(linkifyMarkdownFileTable(withRealUrl)) as string
     }
 
+    // 链接查看弹层状态：AI 回复中的 http/https 链接点击后在本地弹层内嵌打开（占视口 90%）
+    const linkViewerVisible = ref(false)
+    const linkViewerUrl = ref('')
+    const linkViewerTitle = ref('')
+
+    const openLinkViewer = (url: string, title = '') => {
+      linkViewerUrl.value = url
+      linkViewerTitle.value = title
+      linkViewerVisible.value = true
+    }
+
+    // 事件代理拦截 v-html 注入内容里的 <a> 点击：http/https 链接改由本地弹层展示，
+    // 阻止默认的 target="_blank" 新标签页跳转；其余链接（如 # 锚点、download 附件）保持原行为
+    const handleContentLinkClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement | null)?.closest?.('a')
+      if (!anchor) return
+      const raw = anchor.getAttribute('href') || ''
+      if (!/^https?:\/\//i.test(raw)) return
+      e.preventDefault()
+      openLinkViewer(raw, anchor.textContent || '')
+    }
+
     const formatTime = (timestamp: number): string => {
       const date = new Date(timestamp)
       const hours = date.getHours().toString().padStart(2, '0')
@@ -3365,6 +3399,11 @@ export default defineComponent({
       handleEnter,
       formatContent,
       formatTime,
+      linkViewerVisible,
+      linkViewerUrl,
+      linkViewerTitle,
+      openLinkViewer,
+      handleContentLinkClick,
       copyMessageContent,
       normalizePendingContext,
       pendingCellText,
