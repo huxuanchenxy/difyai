@@ -92,7 +92,7 @@
             >
               <!-- 不解构，防止 el-table-column 在初始化阶段以 undefined scope 调用插槽导致渲染中断 -->
               <template #default="scope">
-                <span v-if="scope && scope.row">{{ formatCell(scope.row[col.prop], col.kind) }}</span>
+                <span v-if="scope && scope.row">{{ formatCell(scope.row[col.prop], col) }}</span>
               </template>
             </el-table-column>
             <el-table-column
@@ -234,8 +234,26 @@
           :required="!!f.required && !isReadonlyField(f)"
         >
           <!-- 主键：新增时可空，编辑时只读 -->
+          <!-- 配了 refDisplay 的字段：渲染为关联表下拉（value 仍是本字段 key，显示名称） -->
+          <el-select
+            v-if="f.refDisplay"
+            v-model="form[f.prop]"
+            filterable
+            clearable
+            :disabled="isReadonlyField(f)"
+            :placeholder="f.placeholder || '请选择'"
+            popper-class="backend-config-popper"
+            style="width: 260px"
+          >
+            <el-option
+              v-for="opt in refOptions(f)"
+              :key="String(opt.value)"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
           <el-input-number
-            v-if="f.kind === 'number'"
+            v-else-if="f.kind === 'number'"
             v-model="form[f.prop]"
             :controls="false"
             :precision="f.numberType === 'float' ? 2 : 0"
@@ -390,7 +408,7 @@
           >
             <!-- 与主列表同规则：不解构，防止初始化阶段以 undefined scope 调用插槽 -->
             <template #default="scope">
-              <span v-if="scope && scope.row">{{ formatCell(scope.row[col.prop], col.kind) }}</span>
+              <span v-if="scope && scope.row">{{ formatCell(scope.row[col.prop], col) }}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -583,6 +601,7 @@ export default defineComponent({
       relDialog.rows = []
       relDialog.total = 0
       relDialog.visible = true
+      ensureRefDicts(getTableDef(rel.targetTable)) // 二级列表/表单同样要显示关联名称
       loadRelationData()
     }
 
@@ -709,8 +728,74 @@ export default defineComponent({
       return false
     }
 
-    const formatCell = (val: any, kind: FieldDef['kind']): string => {
+    // ===== 关联显示字典（FieldDef.refDisplay）=====
+    // 按来源表缓存：首次用到时拉 page 前 1000 条，之后表单下拉/列表单元格复用；
+    // loaded 后不再请求，失败保持未加载下次重试
+    const refDict = reactive<Record<string, { loading: boolean; loaded: boolean; items: any[]; }>>({})
+
+    const refDictOf = (table: string) => {
+      if (!refDict[table]) refDict[table] = { loading: false, loaded: false, items: [] }
+      return refDict[table]
+    }
+
+    /** 扫表定义里所有 refDisplay 源表，未加载的逐个拉取 */
+    const ensureRefDicts = (def?: TableDef) => {
+      if (!def) return
+      const tables = new Set(
+        def.fields.map(f => f.refDisplay?.table).filter(Boolean) as BackendTableKey[],
+      )
+      tables.forEach(t => {
+        const dict = refDictOf(t)
+        if (dict.loading || dict.loaded) return
+        dict.loading = true
+        backendConfigApi[t].page({ pageNum: 1, pageSize: 1000 })
+          .then(resp => {
+            const page = (resp?.data || {}) as BackendPage
+            dict.items = Array.isArray(page.records) ? page.records : []
+            dict.loaded = true
+            // 该版本 el-table 的单元格不随外部响应式（refDict 后到）自动重渲染：
+            // 字典就绪后换一次行数组引用，让 refDisplay 名称立即替换掉回落的 ID
+            if (rows.value.length) rows.value = rows.value.slice()
+            if (relDialog.rows.length) relDialog.rows = relDialog.rows.slice()
+          })
+          .catch((e: any) => {
+            ElMessage.warning(e?.message || `加载关联字典(${t})失败`)
+          })
+          .finally(() => { dict.loading = false })
+      })
+    }
+
+    /** 字典里 id → 显示名称；查不到返回空串（调用方回落原值） */
+    const refDisplayLabel = (ref: NonNullable<FieldDef['refDisplay']>, val: any): string => {
+      const items = refDict[ref.table]?.items || []
+      const hit = items.find(it => String(it?.[ref.valueField]) === String(val))
+      return hit ? String(hit[ref.labelField] ?? '') : ''
+    }
+
+    /** 表单下拉选项：「名称 (id)」；当前值不在字典内时补一条原值项，避免编辑态显示空白 */
+    const refOptions = (f: FieldDef): { value: any; label: string; }[] => {
+      if (!f.refDisplay) return []
+      const ref = f.refDisplay
+      const items = refDict[ref.table]?.items || []
+      const opts = items.map(it => ({
+        value: it[ref.valueField],
+        label: `${it[ref.labelField] ?? ''} (${it[ref.valueField] ?? ''})`,
+      }))
+      const cur = form[f.prop]
+      if (cur !== null && cur !== undefined && cur !== '' && !opts.some(o => String(o.value) === String(cur))) {
+        opts.unshift({ value: cur, label: `(字典外) ${cur}` })
+      }
+      return opts
+    }
+
+    const formatCell = (val: any, col: FieldDef): string => {
+      const kind = col.kind
       if (val === null || val === undefined || val === '') return '-'
+      // 配了 refDisplay：优先显示关联名称，查不到回落原 id
+      if (col.refDisplay) {
+        const name = refDisplayLabel(col.refDisplay, val)
+        if (name) return name
+      }
       if (kind === 'boolean') return val ? '是' : '否'
       if (kind === 'json' || kind === 'stringArray') return shortJson(val)
       if (typeof val === 'object') return shortJson(val)
@@ -774,6 +859,7 @@ export default defineComponent({
       rows.value = []
       total.value = 0
       pageNum.value = 1
+      ensureRefDicts(getTableDef(key)) // 列表单元格要显示关联名称
       loadPage(1)
     }
 
@@ -833,6 +919,7 @@ export default defineComponent({
       formTableKey.value = tableKeyOverride ?? activeKey.value
       if (!formDef.value) return
       const def = formDef.value
+      ensureRefDicts(def) // 表单里 refDisplay 字段的下拉字典按需就绪
 
       if (!row) {
         formMode.value = 'create'
@@ -870,6 +957,7 @@ export default defineComponent({
       formTableKey.value = tableKeyOverride ?? activeKey.value
       const def = formDef.value
       if (!def || !row) return
+      ensureRefDicts(def) // 复制同样开表单，refDisplay 下拉需要字典
       let record = row
       const id = row[def.idField]
       if (id !== null && id !== undefined && id !== '') {
@@ -1067,7 +1155,8 @@ export default defineComponent({
     }
 
     const handleOpen = () => {
-      // 弹窗打开时加载首个表数据
+      // 弹窗打开时加载首个表数据（含其 refDisplay 字典）
+      ensureRefDicts(activeDef.value)
       if (rows.value.length === 0 && total.value === 0) loadPage(1)
     }
 
@@ -1093,6 +1182,7 @@ export default defineComponent({
       openRelation,
       loadRelationData,
       handleRelationSize,
+      refOptions,
       rows,
       total,
       pageNum,

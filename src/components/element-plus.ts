@@ -17,6 +17,9 @@ import {
   ElSwitch,
   ElPagination,
   ElTooltip,
+  // 表单字段的 refDisplay 关联下拉需要；未注册时 <el-select> 会被当未知标签渲染为空
+  ElSelect,
+  ElOption,
   ElLoading,
   // 该版本（1.0.2-beta）Element Plus 文案由全局单例 locale 提供。
   // 必须从顶层 'element-plus' 引入 locale（即内部 use），与组件共享同一
@@ -40,6 +43,8 @@ const components = [
   ElSwitch,
   ElPagination,
   ElTooltip,
+  ElSelect,
+  ElOption,
 ]
 
 const install = (app: App): void => {

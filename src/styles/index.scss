@@ -81,3 +81,32 @@
   font-size: 14px;
   line-height: 1;
 }
+
+// el-select 尾部图标：同样是 element-icons 字体字形（缺字体时渲染成 ⊠ 乱码），
+// 去掉字体字符，箭头用 border 自绘 ▼（caret 展开时整体旋转，自绘部分同步翻转），
+// 清空态（hover 时 class 切为 el-icon-circle-close）用普通 Unicode 叉呈现
+.el-select .el-input .el-select__caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.el-select .el-input .el-select__caret::before {
+  content: none;
+}
+
+.el-select .el-input .el-select__caret.el-icon-arrow-up::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin-top: -3px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.el-select .el-input .el-select__caret.el-icon-circle-close::after {
+  content: '✕';
+  font-size: 12px;
+  line-height: 1;
+}

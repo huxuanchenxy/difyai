@@ -46,6 +46,17 @@ export interface FieldDef {
   width?: number
   /** 占位提示 */
   placeholder?: string
+  /** 关联显示：把 ID 类字段关联到另一张表的可读名称。
+   *  配置后表单渲染为下拉框（提交值仍是本字段 key），列表单元格优先显示关联名称；
+   *  字典自动按需拉取（源表 page 前 1000 条） */
+  refDisplay?: {
+    /** 来源表 key（backendConfigApi 中的任一张表） */
+    table: BackendTableKey
+    /** 源表中与本字段值匹配的字段（如 skillId） */
+    valueField: string
+    /** 源表中要展示的名称字段（如 skillName） */
+    labelField: string
+  }
 }
 
 export interface TableDef {
@@ -169,7 +180,7 @@ export const BACKEND_TABLES: TableDef[] = [
     fields: [
       { prop: 'configId', label: '配置ID', kind: 'number', isId: true, numberType: 'int', width: 90 },
       { prop: 'intentCode', label: '意图编码', kind: 'text', required: true, width: 140, placeholder: '关联意图编码' },
-      { prop: 'skillId', label: '技能ID', kind: 'number', numberType: 'int', required: true, width: 90, placeholder: '关联技能ID(dify_skill_registry)' },
+      { prop: 'skillId', label: '技能名称', kind: 'number', numberType: 'int', required: true, width: 160, placeholder: '关联技能ID(dify_skill_registry)', refDisplay: { table: 'difySkillRegistry', valueField: 'skillId', labelField: 'skillName' } },
       { prop: 'callOrder', label: '步骤顺序', kind: 'number', numberType: 'int', required: true, width: 100, placeholder: '从1开始' },
       { prop: 'stepCode', label: '步骤标识', kind: 'text', required: true, width: 120, placeholder: '同一意图内唯一' },
       { prop: 'isForceSkip', label: '强制跳过', kind: 'boolean', width: 100 },
