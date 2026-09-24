@@ -199,7 +199,7 @@ export const BACKEND_TABLES: TableDef[] = [
     hasEnabledList: true,
     fields: [
       { prop: 'paramId', label: '参数ID', kind: 'number', isId: true, numberType: 'int', width: 90 },
-      { prop: 'skillId', label: '技能ID', kind: 'number', numberType: 'int', required: true, width: 90 },
+      { prop: 'skillId', label: '技能名称', kind: 'number', numberType: 'int', required: true, width: 160, placeholder: '关联技能ID(dify_skill_registry)', refDisplay: { table: 'difySkillRegistry', valueField: 'skillId', labelField: 'skillName' } },
       { prop: 'paramCode', label: '参数编码', kind: 'text', required: true, width: 140 },
       { prop: 'paramName', label: '参数名称', kind: 'text', required: true, width: 140 },
       { prop: 'direction', label: '方向', kind: 'text', width: 90, placeholder: 'in / out' },
