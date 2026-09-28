@@ -49,4 +49,9 @@ interface ImportMetaEnv {
   // MCP 图片服务地址（后端 answer 中 http://YOUR_SERVER_IP:MCP_PORT/images/xxx.png 占位符的真实值）
   VITE_APP_MCP_HOST: string
   VITE_APP_MCP_PORT: string
+
+  // 讯飞语音听写（流式版 IAT）凭据，前端直连时由构建产物内联，详见 src/utils/xf-iat.ts
+  VITE_APP_XF_IAT_APPID: string
+  VITE_APP_XF_IAT_API_KEY: string
+  VITE_APP_XF_IAT_API_SECRET: string
 }

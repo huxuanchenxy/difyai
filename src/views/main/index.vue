@@ -10,6 +10,7 @@
       :md-editor="true"
       md-editor-storage-key="difyai-md-doc"
       :text-welcome="false"
+      :voice-input="true"
       :login-account="urlToken"
       :auth-token="urlToken"
       :anonymous="isNoAuthAccess"

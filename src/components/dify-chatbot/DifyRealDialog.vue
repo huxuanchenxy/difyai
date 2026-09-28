@@ -486,6 +486,18 @@
                         <span class="attach-text">添加附件</span>
                       </button>
                       <div class="composer-footer-right">
+                        <!-- 语音输入（讯飞听写 IAT）：识别文字实时写入输入框，不自动发送；
+                             prop voiceInput 开启且环境具备条件时才渲染；靠右与发送按钮同组，仅留图标 -->
+                        <button
+                          v-if="showVoiceBtn"
+                          class="attach-btn voice-btn"
+                          :class="{ listening: isListening }"
+                          :disabled="isLoading"
+                          :title="isListening ? '停止语音输入' : '语音输入'"
+                          @click="toggleVoiceInput"
+                        >
+                          <ChatMic class="attach-icon" />
+                        </button>
                         <span v-if="isLoading" class="hint">AI 正在思考中，请稍候...</span>
                         <button
                           v-if="isLoading"
@@ -580,6 +592,7 @@ import { useMessage } from 'naive-ui'
 import { DemoScriptEngine } from './demo-script'
 import ChatCopy from '@/icons/chat-copy.vue'
 import ChatUpload from '@/icons/chat-upload.vue'
+import ChatMic from '@/icons/chat-mic.vue'
 import ChatStop from '@/icons/chat-stop.vue'
 import ChatSend from '@/icons/chat-send.vue'
 import ChatThemeDark from '@/icons/chat-theme-dark.vue'
@@ -595,6 +608,7 @@ import ChatArrowDown from '@/icons/chat-arrow-down.vue'
 import MdEditorDialog from './MdEditorDialog.vue'
 import LinkViewerDialog from './LinkViewerDialog.vue'
 import { getFontScale } from './font-scale'
+import { XfIatRecognizer, isXfIatAvailable } from '@/utils/xf-iat'
 import { assembleECharts } from 'flint-chart'
 import type { ChartAssemblyInput } from 'flint-chart'
 import * as echarts from 'echarts'
@@ -757,6 +771,7 @@ export default defineComponent({
     ElInput,
     ChatCopy,
     ChatUpload,
+    ChatMic,
     ChatStop,
     ChatSend,
     ChatThemeDark,
@@ -840,6 +855,12 @@ export default defineComponent({
     suggestions: {
       type: Array as () => SuggestionCard[] | null,
       default: null,
+    },
+    // 输入区「语音输入」按钮：基于浏览器 Web Speech API（SpeechRecognition），
+    // 识别结果实时写入输入框、不自动发送；浏览器不支持时按钮自动隐藏
+    voiceInput: {
+      type: Boolean,
+      default: false,
     },
     // 左侧对话历史侧栏宽度（px）
     sidebarWidth: {
@@ -2021,6 +2042,7 @@ export default defineComponent({
       document.removeEventListener('mousemove', handleResize)
       document.removeEventListener('mouseup', stopResize)
       window.removeEventListener('resize', handleWindowResize)
+      abortVoiceInput()
       disposeAllCharts()
       closeWs()
     })
@@ -2028,6 +2050,8 @@ export default defineComponent({
     const handleClose = () => {
       // 关闭窗口时停止生成，避免后台定时器/迟到回复继续输出
       stopGeneration()
+      // 关闭时立即中止语音识别，防止麦克风保持开启
+      abortVoiceInput()
       dialogVisible.value = false
       emit('update:visible', false)
       emit('close')
@@ -2252,6 +2276,12 @@ export default defineComponent({
     const sendMessage = async () => {
       if (!userQuery.value.trim() && uploadedFiles.value.length === 0) {
         return
+      }
+
+      // 识别进行中用户直接点发送：先立即中止识别并释放麦克风，
+      // 避免后续 onResult 把识别文字回写进已清空的输入框
+      if (isListening.value || recognizer) {
+        abortVoiceInput()
       }
 
       // 有附件仍在上传中时，先等待全部拿到 fileId，保证 files 数组完整
@@ -3302,6 +3332,65 @@ export default defineComponent({
       fileInputRef.value?.click()
     }
 
+    // ==================== 语音输入（讯飞语音听写 IAT） ====================
+    // 浏览器原生 SpeechRecognition 依赖谷歌云端、国内不可达，改接讯飞 IAT（国内直连）；
+    // 采集 / 签名 / 收发封装在 @/utils/xf-iat，识别文字实时写入输入框、不自动发送
+    // 宿主开了 voiceInput 但环境不具备条件（非安全上下文 / 无麦克风 API / 未配置密钥）时隐藏按钮
+    const showVoiceBtn = computed(() => props.voiceInput && isXfIatAvailable())
+    const isListening = ref(false)
+    // 识别会话基线：开始时输入框已有内容则识别文字换行追加其后，不覆盖用户已输入
+    let voiceBaseText = ''
+    let recognizer: XfIatRecognizer | null = null
+
+    const startVoiceInput = async () => {
+      if (!isXfIatAvailable() || isListening.value || recognizer) return
+      voiceBaseText = userQuery.value
+      const rec = new XfIatRecognizer()
+      recognizer = rec
+      // 先置聆听中给用户即时反馈（麦克风授权 + 握手为异步）
+      isListening.value = true
+      try {
+        await rec.start({
+          // 每次回调当前完整识别文本（已含动态修正替换），直接拼到基线之后写回输入框
+          onResult: (text: string) => {
+            userQuery.value = `${voiceBaseText}${voiceBaseText && text ? '\n' : ''}${text}`
+          },
+          onError: (message: string) => {
+            nMessage.error(message)
+          },
+          onEnd: () => {
+            isListening.value = false
+            if (recognizer === rec) recognizer = null
+          },
+        })
+      } catch (e) {
+        // start 内部已消化常规错误，此处兜底极端异常（如构造 WebSocket 抛错）
+        isListening.value = false
+        recognizer = null
+        nMessage.error('语音输入启动失败，请重试')
+      }
+    }
+
+    // 正常停止：排空缓冲并发结束帧，等服务端定稿后关闭，已识别文字保留
+    const stopVoiceInput = () => {
+      recognizer?.stop()
+    }
+
+    // 立即中止：关窗 / 卸载 / 发送时用，不等收尾、直接释放麦克风
+    const abortVoiceInput = () => {
+      recognizer?.abort()
+      recognizer = null
+    }
+
+    const toggleVoiceInput = () => {
+      if (isListening.value) {
+        // 再点一次：停止本次识别，已识别文字保留在输入框
+        stopVoiceInput()
+      } else {
+        startVoiceInput()
+      }
+    }
+
     const formatFileSize = (size: number): string => {
       if (size < 1024) {
         return `${size} B`
@@ -3431,6 +3520,9 @@ export default defineComponent({
       handleFileSelect,
       removeFile,
       openFileDialog,
+      showVoiceBtn,
+      isListening,
+      toggleVoiceInput,
       formatFileSize,
       isImageFile,
       fileIcon,
@@ -3497,6 +3589,8 @@ export default defineComponent({
   --chat-text: #2b3747;
   --chat-text-sub: #6c7c93;
   --chat-text-light: #9aa8bb;
+  /* 错误/危险色浅底：语音输入「聆听中」状态等复用，与 stop-btn 红色系一致 */
+  --chat-danger-soft: #fdeceb;
   /* 内容列最大宽度：欢迎页 / 消息列表 / 输入区共用，改这一个值即可整体加宽 */
   --chat-content-max: 1040px;
 }
@@ -5060,6 +5154,34 @@ export default defineComponent({
 /* 图标组件内写死的 fill 由 CSS 接管，跟随按钮文字颜色 */
 .attach-btn :deep(.attach-icon path) {
   fill: currentColor !important;
+}
+
+/* 语音输入（纯图标）：去掉文字按钮的左右内边距，保持图标居中 */
+.voice-btn {
+  padding: calc(5px * var(--chat-font-scale, 1)) calc(6px * var(--chat-font-scale, 1));
+}
+
+/* 聆听中切换为红色系警示态 + 呼吸动效，明示麦克风正在采集 */
+.voice-btn.listening {
+  background-color: var(--chat-danger-soft);
+  color: #dc2626;
+  animation: voice-listening-pulse 1.4s ease-in-out infinite;
+}
+
+.voice-btn.listening:hover:not(:disabled) {
+  background-color: var(--chat-danger-soft);
+  color: #dc2626;
+}
+
+@keyframes voice-listening-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.18);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.12);
+  }
 }
 
 .composer-footer-right {
