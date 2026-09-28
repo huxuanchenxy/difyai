@@ -1604,14 +1604,16 @@ export default defineComponent({
       return msg
     }
 
-    // 是否为「后端认证存储不可用」类鉴权失败帧（如 msg="调用AI失败：AI接口异常响应体：{\"detail\":\"认证存储暂不可用\"}", code=401）
+    // 是否为后端鉴权失败帧（如 msg="调用AI失败：AI接口异常响应体：{\"detail\":\"token 无效或已过期\"}", code=401，
+    // 旧版后端文案为「认证存储暂不可用」）
     // 这类错误重试无意义（token 在后端已无法校验），需要清登录态并跳回登录页。
-    // 判定双通道：code=401 直接命中（不依赖文案，最可靠）；关键字则先经 prettifyErrorDetail
-    // 提取内层 detail 再比对，原始 msg / detail 两个形态都参与匹配，降低转义/文案差异导致的漏判
+    // 判定双通道：code=401 直接命中（不依赖文案，后端校准过响应体也能跳）；关键字仅作非法帧兜底，
+    // 先经 prettifyErrorDetail 提取内层 detail 再比对，原始 msg / detail 两个形态都参与匹配
     const isAuthUnavailableError = (msg: string, code?: number | string): boolean => {
       if (Number(code) === 401) return true
       const candidates = [msg, prettifyErrorDetail(msg)]
-      return candidates.some(t => t.includes('认证存储暂不可用') || t.includes('认证存储不可用'))
+      const keywords = ['token 无效', 'token无效', '已过期', '认证存储暂不可用', '认证存储不可用']
+      return candidates.some(t => keywords.some(k => t.includes(k)))
     }
 
     // 鉴权失败处理：清理本地 token 并跳回登录页（带 redirect 回跳当前页）。
@@ -1759,7 +1761,7 @@ export default defineComponent({
           // 防止错误帧若同时携带 content 等字段被当作普通回复处理
           if (data.type === 'error' || data.error) {
             console.error('[DifyRealDialog][WS] 服务端错误:', data.msg || data.error)
-            // 后端认证失败（code=401，或 msg/detail 命中「认证存储暂不可用」）：登录态已失效，跳回登录页
+            // 后端鉴权失败（code=401，或 msg/detail 命中「token 无效/已过期」等关键字）：登录态已失效，跳回登录页
             const rawDetail = String(data.msg || data.error || '')
             if (isAuthUnavailableError(rawDetail, data.code)) {
               redirectToLoginOnAuthError()
