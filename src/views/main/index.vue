@@ -3,7 +3,7 @@
     <!-- 应用层：Dify 智能助手对话窗（内嵌填满页面） -->
     <DifyRealDialog
       v-model:visible="showDialog"
-      title="DifyAI 智能助手"
+      title="AI 智能助手"
       :inline="true"
       :fixed="true"
       role="backend_ops"

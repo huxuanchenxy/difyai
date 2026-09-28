@@ -9,7 +9,7 @@
       <!-- 品牌区：与 DifyRealDialog 欢迎页同款星光徽标 + 标语 -->
       <div class="login-brand">
         <span class="login-brand-badge"><ChatSparkle /></span>
-        <div class="login-brand-title">DifyAI 智能助手</div>
+        <div class="login-brand-title">AI 智能助手</div>
         <div class="login-brand-sub">让想法，更进一步 · 你的智能工作伙伴</div>
       </div>
 
