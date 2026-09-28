@@ -609,6 +609,7 @@ import MdEditorDialog from './MdEditorDialog.vue'
 import LinkViewerDialog from './LinkViewerDialog.vue'
 import { getFontScale } from './font-scale'
 import { XfIatRecognizer, isXfIatAvailable } from '@/utils/xf-iat'
+import { removeToken } from '@/utils/token-util'
 import { assembleECharts } from 'flint-chart'
 import type { ChartAssemblyInput } from 'flint-chart'
 import * as echarts from 'echarts'
@@ -1603,6 +1604,41 @@ export default defineComponent({
       return msg
     }
 
+    // 是否为「后端认证存储不可用」类鉴权失败帧（如 msg="调用AI失败：AI接口异常响应体：{\"detail\":\"认证存储暂不可用\"}", code=401）
+    // 这类错误重试无意义（token 在后端已无法校验），需要清登录态并跳回登录页。
+    // 判定双通道：code=401 直接命中（不依赖文案，最可靠）；关键字则先经 prettifyErrorDetail
+    // 提取内层 detail 再比对，原始 msg / detail 两个形态都参与匹配，降低转义/文案差异导致的漏判
+    const isAuthUnavailableError = (msg: string, code?: number | string): boolean => {
+      if (Number(code) === 401) return true
+      const candidates = [msg, prettifyErrorDetail(msg)]
+      return candidates.some(t => t.includes('认证存储暂不可用') || t.includes('认证存储不可用'))
+    }
+
+    // 鉴权失败处理：清理本地 token 并跳回登录页（带 redirect 回跳当前页）。
+    // 宿主下发 authToken（发布页 / URL token 匿名场景）时不跳登录——登录页对该场景无意义，
+    // 且路由守卫会对 URL token 再次放行，只结束思考态展示错误
+    const redirectToLoginOnAuthError = () => {
+      if (props.authToken) {
+        console.warn('[DifyRealDialog][WS] 鉴权失败但存在宿主 authToken（URL token 免登录场景），不跳登录页')
+        return
+      }
+      removeToken()
+      // 主动断开并抑制 onclose 里的自动重连：token 已清，重连只会继续失败
+      resetReconnect()
+      if (ws.value) {
+        ws.value.close()
+        ws.value = null
+      }
+      clearReplyWatchdog()
+      const thinkingIdx = messages.value.findIndex(msg => msg.isThinking)
+      if (thinkingIdx !== -1) messages.value.splice(thinkingIdx, 1)
+      isLoading.value = false
+      nMessage.error('登录状态已失效，请重新登录')
+      // 本组件不感知路由（router 由宿主使用），hash 路由下直接改 location.hash 完成跳转
+      const cur = (window.location.hash || '').replace(/^#/, '') || '/'
+      window.location.hash = `#/login?redirect=${encodeURIComponent(cur)}`
+    }
+
     // 停止生成：
     // 1) WS 链路——清除看门狗并结束思考态；连接保持不断开（后续可继续发消息），
     //    停止后到达的迟到回复帧由 onmessage 中的 isLoading 判断丢弃；
@@ -1700,10 +1736,18 @@ export default defineComponent({
           } catch (e) {
             // 帧本身非法（如 msg 内含未转义换行导致 JSON 断裂）：结束思考态并提示，避免卡死
             console.error('[DifyRealDialog] 收到无法解析的消息', ev.data)
+            // 非法 JSON 帧同样先嗅探鉴权失败关键字（帧无 code 字段可依据，只能靠文案）：
+            // 除了提取到的 msg，再对整帧原文兼容一层转义后比对，降低转义差异导致的漏判
+            const rawDetailForCheck = extractErrorMsg(String(ev.data))
+            const authFrameHint = `${rawDetailForCheck || ''} ${String(ev.data).replace(/\\"/g, '"')}`
+            if (isAuthUnavailableError(authFrameHint)) {
+              redirectToLoginOnAuthError()
+              return
+            }
             if (isLoading.value) {
               // 尽力从原始帧中还原 msg 字段，把后端错误详情直接写入 AI 助手回复内容
               // （不再只依赖 toast 弹窗，避免用户错过关键错误原因）
-              const rawDetail = extractErrorMsg(String(ev.data))
+              const rawDetail = rawDetailForCheck
               const chatText = rawDetail
                 ? `消息处理失败：${prettifyErrorDetail(rawDetail)}`
                 : '消息处理失败，请稍后重试'
@@ -1715,11 +1759,16 @@ export default defineComponent({
           // 防止错误帧若同时携带 content 等字段被当作普通回复处理
           if (data.type === 'error' || data.error) {
             console.error('[DifyRealDialog][WS] 服务端错误:', data.msg || data.error)
+            // 后端认证失败（code=401，或 msg/detail 命中「认证存储暂不可用」）：登录态已失效，跳回登录页
+            const rawDetail = String(data.msg || data.error || '')
+            if (isAuthUnavailableError(rawDetail, data.code)) {
+              redirectToLoginOnAuthError()
+              return
+            }
             // 已停止/非等待回复状态下不弹提示，避免迟到错误帧打扰
             if (isLoading.value) {
               // 把后端返回的 msg 错误详情直接写入 AI 助手回复内容，
               // 若 msg 中嵌套了 {"detail":"..."} 结构则优先展示内层 detail，让用户看到具体原因
-              const rawDetail = String(data.msg || data.error || '')
               const chatText = rawDetail
                 ? `消息处理失败：${prettifyErrorDetail(rawDetail)}`
                 : '消息处理失败，请稍后重试'
