@@ -1,6 +1,6 @@
 import { ref } from 'vue'
-import { login, logout, getInfo, getRolePermissions } from '@/api/user'
-import { setToken, removeToken, removeIframe, setMainMenu, setProjectMenu, removeMainMenu, removeProjectMenu } from '@/utils/token-util'
+import { login, logout, getInfo /* getRolePermissions */ } from '@/api/user'
+import { setToken, removeToken, removeIframe /* setMainMenu, setProjectMenu */, removeMainMenu, removeProjectMenu } from '@/utils/token-util'
 
 interface tokenModel {
   access_token: string
@@ -39,22 +39,23 @@ export const UserStore = () => {
     }
   }
 
-  const getRoleMenu = async () => {
-    try {
-      const res = await getRolePermissions()
-      if (res.data.code === 200) {
-        const { data } = res.data
-        const mainMenu = JSON.stringify(data['一级菜单'])
-        const projectMenu = JSON.stringify(data['二级菜单'])
-        setMainMenu(mainMenu)
-        setProjectMenu(projectMenu)
-      } else {
-        throw Error(res.data.message)
-      }
-    } catch (error) {
-      throw error
-    }
-  }
+  // 暂时不用获取用户角色菜单接口
+  // const getRoleMenu = async () => {
+  //   try {
+  //     const res = await getRolePermissions()
+  //     if (res.data.code === 200) {
+  //       const { data } = res.data
+  //       const mainMenu = JSON.stringify(data['一级菜单'])
+  //       const projectMenu = JSON.stringify(data['二级菜单'])
+  //       setMainMenu(mainMenu)
+  //       setProjectMenu(projectMenu)
+  //     } else {
+  //       throw Error(res.data.message)
+  //     }
+  //   } catch (error) {
+  //     throw error
+  //   }
+  // }
 
   const getUserInfo = async () => {
     try {
@@ -97,6 +98,6 @@ export const UserStore = () => {
     getUserInfo,
     resetToken,
     doLogout,
-    getRoleMenu,
+    // getRoleMenu,
   }
 }

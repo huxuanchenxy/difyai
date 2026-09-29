@@ -277,7 +277,8 @@ export default defineComponent({
       loading.value = true
       UserStore().doLogin(loginForm.value.username, loginForm.value.password, loginForm.value.code)
         .then(async () => {
-          await UserStore().getRoleMenu()
+          // 暂时不用获取用户角色菜单接口
+          // await UserStore().getRoleMenu()
           localStorage.setItem('loginAccount', loginForm.value.username)
           localStorage.setItem('loginRemember', String(remember.value))
           if (remember.value) {

@@ -24,7 +24,7 @@ export function getInfo() {
   return requestic.get('/server/authority/user/info')
 }
 
-// 查询菜单权限
-export function getRolePermissions() {
-  return requestic.post('/server/authority/menu/permissions', {})
-}
+// 查询菜单权限（暂时不用获取用户角色菜单接口）
+// export function getRolePermissions() {
+//   return requestic.post('/server/authority/menu/permissions', {})
+// }
