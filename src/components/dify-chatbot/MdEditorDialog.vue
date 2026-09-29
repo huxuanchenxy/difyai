@@ -34,7 +34,7 @@
             <!-- 字数统计使用编辑器自带的底栏显示，此处不再重复 -->
             <div class="footer-actions">
               <button class="btn btn-cancel" @click="handleClose">取消</button>
-              <button class="btn btn-save" @click="handleSave">保存</button>
+              <button class="btn btn-save" @click="handleSave">确定</button>
             </div>
           </div>
           <input
