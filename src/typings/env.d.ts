@@ -46,6 +46,9 @@ interface ImportMetaEnv {
   VITE_APP_DIFY_UPLOAD_HOST: string // 附件上传服务地址（/api/file/upload/batch）
   VITE_APP_DIFY_SRC_SYSTEM: string // 组态侧鉴权来源系统标识（X-Src-System）
 
+  // 登录页匿名登录（免密）跳转携带的 URL token（存原始值，router 拼 query 时自动编码）；置空则隐藏入口
+  VITE_APP_ANONYMOUS_TOKEN: string
+
   // MCP 图片服务地址（后端 answer 中 http://YOUR_SERVER_IP:MCP_PORT/images/xxx.png 占位符的真实值）
   VITE_APP_MCP_HOST: string
   VITE_APP_MCP_PORT: string

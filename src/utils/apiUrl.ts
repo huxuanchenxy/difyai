@@ -17,7 +17,8 @@ export function getApiUrl(urlPart:string)
     fullUrl += `:${import.meta.env.VITE_APP_SERVER_PORT}`
   }
 
-  return `${fullUrl}/${urlPart}`
+  // return `${fullUrl}/${urlPart}`
+  return `${fullUrl}`
 }
 
 
@@ -40,7 +41,8 @@ export function getIcApiUrl(urlPart:string)
     fullUrl += `:${import.meta.env.VITE_APP_IC_PORT}`
   }
 
-  return `${fullUrl}/${urlPart}`
+  // return `${fullUrl}/${urlPart}`
+  return `${fullUrl}`
 }
 
 

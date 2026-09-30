@@ -4,7 +4,7 @@ import { getApiUrl } from '@/utils/apiUrl'
 
 // 登录 / 登出 / 用户信息 / 菜单权限 / 改密：仅保留 difyai 登录模块所需接口
 export function login(userName: string, password: string, code: string) {
-  return requestic.post('/home/login', { userName, password, code })
+  return requestic.post('/api/oauth/login', { userName, password, code })
 }
 
 export function updatePassword(userName: string, password: string, newpassword: string) {
@@ -16,12 +16,12 @@ export function updatePassword(userName: string, password: string, newpassword: 
 }
 
 export function logout() {
-  return requestic.post('/home/logout')
+  return requestic.post('/api/oauth/logout')
 }
 
 // 当前登录用户信息
 export function getInfo() {
-  return requestic.get('/server/authority/user/info')
+  return requestic.get('/api/oauth/getUser')
 }
 
 // 查询菜单权限（暂时不用获取用户角色菜单接口）

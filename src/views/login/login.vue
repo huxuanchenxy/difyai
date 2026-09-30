@@ -168,6 +168,35 @@
         </button>
       </form>
 
+      <!-- 匿名登录（免密）：仅在配置了 VITE_APP_ANONYMOUS_TOKEN 时展示 -->
+      <template v-if="anonymousToken">
+        <div class="login-split">
+          <span class="login-split-line"></span>
+          <span class="login-split-text">或</span>
+          <span class="login-split-line"></span>
+        </div>
+        <button type="button" class="login-anonymous" @click="handleAnonymousLogin">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle
+              cx="12"
+              cy="8"
+              r="3.4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+            <path
+              d="M4.8 19.4c.9-3.2 3.7-5 7.2-5s6.3 1.8 7.2 5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span>匿名登录</span>
+        </button>
+      </template>
+
       <div class="login-footer">登录后即可与智能助手开始对话</div>
     </div>
   </div>
@@ -210,6 +239,10 @@ export default defineComponent({
 
     const route = useRoute()
     const router = useRouter()
+
+    // 匿名登录（免密）：token 从环境变量取，存原始值；为空则隐藏入口。
+    // router.push 的 query 会被自动编码，最终 URL 形如 /#/?token=owgBrqms9%2FFa4Z2Ri3iByg%3D%3D
+    const anonymousToken = (import.meta.env.VITE_APP_ANONYMOUS_TOKEN || '').trim()
 
     loginForm.value.username = localStorage.getItem('loginAccount') || ''
     remember.value = localStorage.getItem('loginRemember') == 'true'
@@ -306,6 +339,18 @@ export default defineComponent({
           loading.value = false
         })
     }
+    // 匿名登录（免密）：不校验用户名密码，直接落到带 token 的免登录 URL。
+    // 采用 hash + reload，行为与外部直接粘贴 /#/?token=xxx 链接一致：
+    // 路由守卫（getUrlAuthToken 读 window.location.hash）在新一次加载中按 URL token 放行，
+    // 从而保证地址栏 URL 与配置完全一致（不经 router 的 query 重编码）。
+    const handleAnonymousLogin = () => {
+      if (!anonymousToken) {
+        ElMessage.warning('匿名登录未启用')
+        return
+      }
+      window.location.hash = `/?token=${anonymousToken}`
+      window.location.reload()
+    }
     return {
       loginForm,
       loading,
@@ -316,6 +361,8 @@ export default defineComponent({
       checkCapslock,
       handleLogin,
       remember,
+      anonymousToken,
+      handleAnonymousLogin,
     }
   },
 })
@@ -587,5 +634,59 @@ $border-soft: #e6ebf4;
   text-align: center;
   font-size: 12px;
   color: #9aa8bd;
+}
+
+/* 匿名登录：分隔线 + 描边幽灵按钮，风格对齐主登录卡片的圆角/描边体系 */
+.login-split {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 14px;
+}
+
+.login-split-line {
+  flex: 1;
+  height: 1px;
+  background: $border-soft;
+}
+
+.login-split-text {
+  font-size: 12px;
+  color: #9aa8bd;
+}
+
+.login-anonymous {
+  width: 100%;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #dfe5ee;
+  border-radius: 12px;
+  background: #fbfcff;
+  color: $text-main;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: $text-muted;
+    transition: color 0.15s;
+  }
+
+  &:hover {
+    border-color: $primary;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.1);
+
+    svg {
+      color: $primary;
+    }
+  }
 }
 </style>

@@ -91,6 +91,16 @@ export default defineComponent({
     // 后台已有免 token 机制；无 URL token 时为空串，DifyRealDialog 自动回退 localStorage 登录态
     const urlToken = getUrlAuthToken()
     const isNoAuthAccess = !!urlToken
+    // 地址栏 token 规范化：hash 路由（vue-router）用 encodeURI 序列化 query，会把 %2F/%3D 当作安全字符
+    // 还原成 / 与 ==（如 owgBrqms9%2FFa4Z2Ri3iByg%3D%3D -> owgBrqms9/Fa4Z2Ri3iByg==）。
+    // 这里在挂载后（晚于任何一次路由重写）用 encodeURIComponent 把 token 段还原为完整百分号编码形式，
+    // 使地址栏与配置的 token 完全一致；urlToken 本身（已解码值）不变，接口鉴权用的仍是它。
+    if (urlToken) {
+      const exactHash = `#/?token=${encodeURIComponent(urlToken)}`
+      if (window.location.hash !== exactHash) {
+        window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${exactHash}`)
+      }
+    }
     // 对话窗始终内嵌显示
     const showDialog = ref(true)
     const backendConfigVisible = ref(false)

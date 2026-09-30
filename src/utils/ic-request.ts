@@ -15,7 +15,7 @@ const setting = loginJson.default as unknown as loginSettingModel
  * 登录、登出、用户信息、菜单权限等接口都走这里。
  */
 const instance = axios.create({
-  baseURL: getIcApiUrl('device'),
+  baseURL: getIcApiUrl(''),
   timeout: 120000,
   withCredentials: false,
 })
