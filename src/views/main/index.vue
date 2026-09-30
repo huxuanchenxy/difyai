@@ -31,10 +31,9 @@
       </template>
 
       <!-- 退出登录：与侧栏底部用户信息（头像 / 用户名 / 角色）同排靠右；
-           匿名访问无登录态，隐藏退出按钮 -->
+           匿名访问（免登录 URL token）同样保留退出入口 -->
       <template #sidebar-footer>
         <button
-          v-if="!isNoAuthAccess"
           type="button"
           class="chat-icon-btn"
           title="退出登录"
@@ -119,7 +118,14 @@ export default defineComponent({
       try {
         await UserStore().doLogout()
       } finally {
-        router.push('/login')
+        if (isNoAuthAccess) {
+          // 匿名访问：token 挂在 URL 上，路由守卫会因 hash 仍带 token 而把 /login 弹回 /，
+          // 故直接把地址改为不带 token 的 #/login 并整页重载，确保干净退出到登录页
+          window.location.hash = '#/login'
+          window.location.reload()
+        } else {
+          router.push('/login')
+        }
       }
     }
     return {
