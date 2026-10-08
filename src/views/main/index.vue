@@ -1,7 +1,10 @@
 <template>
   <div class="difyai-main">
-    <!-- 应用层：Dify 智能助手对话窗（内嵌填满页面） -->
+    <!-- 应用层：Dify 智能助手对话窗（内嵌填满页面）。
+         匿名访问（URL 带 ?token）在永久 token 兑换完成前不渲染，
+         确保会话列表 / 历史 / 删除 / 上传 / WS 首帧就用永久 token 发起请求 -->
     <DifyRealDialog
+      v-if="authReady"
       v-model:visible="showDialog"
       title="AI 智能助手"
       :inline="true"
@@ -11,8 +14,8 @@
       md-editor-storage-key="difyai-md-doc"
       :text-welcome="false"
       :voice-input="true"
-      :login-account="urlToken"
-      :auth-token="urlToken"
+      :login-account="effectiveToken"
+      :auth-token="effectiveToken"
       :anonymous="isNoAuthAccess"
     >
       <!-- 后台配置入口：插入对话窗顶栏操作区（收起会话列表按钮同排），
@@ -74,6 +77,7 @@ import DifyRealDialog from '@/components/dify-chatbot/DifyRealDialog.vue'
 import BackendConfigDialog from './BackendConfigDialog.vue'
 import { UserStore } from '@/domains/user'
 import { getUrlAuthToken } from '@/utils/token-util'
+import { verifyAnonymousToken } from '@/utils/anonymous-auth'
 import { IconSettings, IconLogout } from '@/icons'
 
 export default defineComponent({
@@ -86,8 +90,8 @@ export default defineComponent({
   },
   setup() {
     const router = useRouter()
-    // 免登录访问：URL 上带 ?token=xxx 时，该 token 同时作为接口的 account(loginAccount) 与 token 下发，
-    // 后台已有免 token 机制；无 URL token 时为空串，DifyRealDialog 自动回退 localStorage 登录态
+    // 免登录访问：URL 上带 ?token=xxx 时即为匿名访问（token 取自 VITE_APP_ANONYMOUS_TOKEN，
+    // 由登录页「匿名登录」拼进 URL）；无 URL token 时为正常登录态，DifyRealDialog 回退 localStorage。
     const urlToken = getUrlAuthToken()
     const isNoAuthAccess = !!urlToken
     // 地址栏 token 规范化：hash 路由（vue-router）用 encodeURI 序列化 query，会把 %2F/%3D 当作安全字符
@@ -99,6 +103,29 @@ export default defineComponent({
       if (window.location.hash !== exactHash) {
         window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${exactHash}`)
       }
+    }
+    // 匿名访问：先用 URL token 调 GET /api/oauth/checkToken 校验有效性——
+    // code=200 才视为匿名登录成功，直接以 URL token 作为鉴权凭证渲染对话窗；
+    // 校验不通过（非 200 / 网络异常）则清掉 URL token 并整页重载回登录页。
+    // 校验完成前不渲染对话窗，避免用无效 token 抢先发起请求。
+    // 非匿名访问：authReady 直接为 true，不进校验流程，原有逻辑完全不变。
+    const authReady = ref(!isNoAuthAccess)
+    // 实际下发给接口的鉴权值：非匿名时为空串（对话窗回退 localStorage 登录态），
+    // 匿名时为通过校验的 URL token
+    const effectiveToken = ref(urlToken)
+    if (isNoAuthAccess) {
+      verifyAnonymousToken(urlToken).then(ok => {
+        if (!ok) {
+          // token 无效：守卫会从 hash 读到残留 token 而把 /login 弹回 /，
+          // 故先把地址改为不带 token 的 #/login 再整页重载，确保干净回到登录页
+          console.warn('[anonymous-auth] checkToken 未通过（code!=200），跳回登录页', { urlToken })
+          window.location.hash = '#/login'
+          window.location.reload()
+          return
+        }
+        // 校验通过：沿用 URL token 作为鉴权凭证，放行渲染
+        authReady.value = true
+      })
     }
     // 对话窗始终内嵌显示
     const showDialog = ref(true)
@@ -131,6 +158,8 @@ export default defineComponent({
     return {
       urlToken,
       isNoAuthAccess,
+      authReady,
+      effectiveToken,
       showDialog,
       backendConfigVisible,
       openBackendConfig,
