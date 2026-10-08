@@ -1,10 +1,5 @@
 <template>
   <div class="login-page">
-    <!-- 背景装饰：柔和光斑（纯 CSS，替代原工业组态背景图） -->
-    <div class="login-blob login-blob-1"></div>
-    <div class="login-blob login-blob-2"></div>
-    <div class="login-blob login-blob-3"></div>
-
     <div class="login-card">
       <!-- 品牌区：与 DifyRealDialog 欢迎页同款星光徽标 + 标语 -->
       <div class="login-brand">
@@ -125,35 +120,6 @@
           </button>
         </label>
         <div v-if="capsOn" class="login-caps-hint">大写锁定已打开</div>
-
-        <label class="login-field">
-          <span class="login-field-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle
-                cx="8.2"
-                cy="15.6"
-                r="3.8"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-              />
-              <path
-                d="M10.9 12.9 19 4.8M15.2 8.6l2.6 2.6M17.6 6.2l2.6 2.6"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-                stroke-linecap="round"
-              />
-            </svg>
-          </span>
-          <input
-            v-model.trim="loginForm.code"
-            type="text"
-            placeholder="动态口令"
-            autocomplete="off"
-            @keyup.enter="handleLogin"
-          >
-        </label>
 
         <div class="login-aux">
           <label class="login-remember">
@@ -369,7 +335,7 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-/* AI 智能助手风格：浅色渐变底 + 居中白色卡片，
+/* AI 智能助手风格：背景图 + 居中白色卡片，
    色板 / 圆角 / 描边图标全部对齐 DifyRealDialog（--chat-primary #2f6bff 体系） */
 $primary: #2f6bff;
 $primary-strong: #1c56e6;
@@ -385,40 +351,10 @@ $border-soft: #e6ebf4;
   overflow: hidden;
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: linear-gradient(165deg, #f6f8fc 0%, #eef4ff 55%, #e8efff 100%);
-}
-
-/* 背景光斑：主色半透明大圆 + 高斯模糊，营造 AI 产品的轻盈氛围 */
-.login-blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  pointer-events: none;
-}
-
-.login-blob-1 {
-  width: 480px;
-  height: 480px;
-  left: -120px;
-  top: -140px;
-  background: rgba(47, 107, 255, 0.16);
-}
-
-.login-blob-2 {
-  width: 420px;
-  height: 420px;
-  right: -100px;
-  bottom: -120px;
-  background: rgba(124, 92, 255, 0.12);
-}
-
-.login-blob-3 {
-  width: 300px;
-  height: 300px;
-  right: 18%;
-  top: -80px;
-  background: rgba(47, 107, 255, 0.08);
+  justify-content: flex-end;
+  padding-right: 18vw;
+  background: url('/images/login-bg.png') no-repeat left center / cover;
+  background-color: #e8f0fa;
 }
 
 .login-card {
