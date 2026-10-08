@@ -11,23 +11,7 @@
       <form class="login-form" @submit.prevent="handleLogin">
         <label class="login-field">
           <span class="login-field-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle
-                cx="12"
-                cy="8"
-                r="3.4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-              />
-              <path
-                d="M4.8 19.4c.9-3.2 3.7-5 7.2-5s6.3 1.8 7.2 5"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-                stroke-linecap="round"
-              />
-            </svg>
+            <LoginUser />
           </span>
           <input
             v-model.trim="loginForm.username"
@@ -39,25 +23,7 @@
 
         <label class="login-field">
           <span class="login-field-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect
-                x="5"
-                y="10.5"
-                width="14"
-                height="9.5"
-                rx="2.5"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-              />
-              <path
-                d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-                stroke-linecap="round"
-              />
-            </svg>
+            <LoginLock />
           </span>
           <input
             v-model="loginForm.password"
@@ -74,49 +40,8 @@
             :title="showPassword ? '隐藏密码' : '显示密码'"
             @click="showPassword = !showPassword"
           >
-            <svg v-if="showPassword" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M2.8 12S6.4 5.9 12 5.9 21.2 12 21.2 12 17.6 18.1 12 18.1 2.8 12 2.8 12Z"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-                stroke-linejoin="round"
-              />
-              <circle
-                cx="12"
-                cy="12"
-                r="2.9"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-              />
-              <line
-                x1="4.6"
-                y1="4.6"
-                x2="19.4"
-                y2="19.4"
-                stroke="currentColor"
-                stroke-width="1.7"
-                stroke-linecap="round"
-              />
-            </svg>
-            <svg v-else viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M2.8 12S6.4 5.9 12 5.9 21.2 12 21.2 12 17.6 18.1 12 18.1 2.8 12 2.8 12Z"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-                stroke-linejoin="round"
-              />
-              <circle
-                cx="12"
-                cy="12"
-                r="2.9"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-              />
-            </svg>
+            <LoginEyeOff v-if="showPassword" />
+            <LoginEye v-else />
           </button>
         </label>
         <div v-if="capsOn" class="login-caps-hint">大写锁定已打开</div>
@@ -142,23 +67,7 @@
           <span class="login-split-line"></span>
         </div>
         <button type="button" class="login-anonymous" @click="handleAnonymousLogin">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle
-              cx="12"
-              cy="8"
-              r="3.4"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-            />
-            <path
-              d="M4.8 19.4c.9-3.2 3.7-5 7.2-5s6.3 1.8 7.2 5"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              stroke-linecap="round"
-            />
-          </svg>
+          <LoginUser />
           <span>匿名登录</span>
         </button>
       </template>
@@ -174,6 +83,10 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UserStore, passwordExpiryError } from '@/domains/user'
 import ChatSparkle from '@/icons/chat-sparkle.vue'
+import LoginUser from '@/icons/login-user.vue'
+import LoginLock from '@/icons/login-lock.vue'
+import LoginEye from '@/icons/login-eye.vue'
+import LoginEyeOff from '@/icons/login-eye-off.vue'
 
 const getOtherQuery = (query: any) => {
   return Object.keys(query).reduce((acc: any, cur) => {
@@ -188,6 +101,10 @@ export default defineComponent({
   name: 'Login',
   components: {
     ChatSparkle,
+    LoginUser,
+    LoginLock,
+    LoginEye,
+    LoginEyeOff,
   },
   setup() {
     const loginForm = ref({
