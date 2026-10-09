@@ -1106,6 +1106,13 @@ export default defineComponent({
         const resp = await difyRequest.get(withLoginAccount(`${base}/api/session/list`), {
           headers: getAuthHeaders(),
         })
+        // 后端返回 code 非 200 视为鉴权失效（如「无效access_token」），跳转登录
+        const resCode = resp.data?.code
+        if (resCode !== undefined && resCode !== 200) {
+          console.warn('[DifyRealDialog] 会话列表接口返回异常 code:', resCode, 'msg:', resp.data?.msg)
+          redirectToLoginOnAuthError()
+          return
+        }
         const rawList = (resp.data?.data || []) as Array<{
           autoId?: number
           cache?: string
