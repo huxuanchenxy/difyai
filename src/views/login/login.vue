@@ -1,5 +1,5 @@
 <template>
-  <div class="login-page">
+  <div class="login-page" :style="{ backgroundImage: `url(${loginBgUrl})` }">
     <div class="login-card">
       <!-- 品牌区：与 DifyRealDialog 欢迎页同款星光徽标 + 标语 -->
       <div class="login-brand">
@@ -87,6 +87,7 @@ import LoginUser from '@/icons/login-user.vue'
 import LoginLock from '@/icons/login-lock.vue'
 import LoginEye from '@/icons/login-eye.vue'
 import LoginEyeOff from '@/icons/login-eye-off.vue'
+import loginBgUrl from '@/assets/images/login-bg.png'
 
 const getOtherQuery = (query: any) => {
   return Object.keys(query).reduce((acc: any, cur) => {
@@ -235,6 +236,7 @@ export default defineComponent({
       window.location.reload()
     }
     return {
+      loginBgUrl,
       loginForm,
       loading,
       capsOn,
@@ -270,7 +272,9 @@ $border-soft: #e6ebf4;
   align-items: center;
   justify-content: flex-end;
   padding-right: 18vw;
-  background: url('/images/login-bg.png') no-repeat left center / cover;
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: cover;
   background-color: #e8f0fa;
 }
 
