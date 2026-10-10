@@ -90,15 +90,33 @@ export function removeProjectMenu() {
  * URLSearchParams 会自动 decode（%2F -> /）。取不到返回空串。
  */
 export function getUrlAuthToken(): string {
+  return getHashQueryParam('token')
+}
+
+/**
+ * 从当前 URL 的 query 上读取指定参数。
+ * hash 路由下参数挂在 hash 的 ? 之后（如 #/?token=xxx&srcSystem=oauth01），
+ * 非 hash 场景兜底读 location.search；URLSearchParams 会自动 decode。取不到返回空串。
+ */
+export function getHashQueryParam(key: string): string {
   const raw = (window.location.hash || '').replace(/^#/, '')
   const qIndex = raw.indexOf('?')
   const search = qIndex >= 0 ? raw.slice(qIndex + 1) : window.location.search.replace(/^\?/, '')
   if (!search) return ''
   try {
-    return new URLSearchParams(search).get('token') || ''
+    return new URLSearchParams(search).get(key) || ''
   } catch (e) {
     return ''
   }
+}
+
+/**
+ * 来源系统标识（X-Src-System 请求头）：优先从 URL 的 srcSystem 参数取
+ * （如 #/?token=xxx&srcSystem=oauth01），取不到再回退环境变量 VITE_APP_DIFY_SRC_SYSTEM，
+ * 最终兜底 zutai01。
+ */
+export function getUrlSrcSystem(): string {
+  return getHashQueryParam('srcSystem') || import.meta.env.VITE_APP_DIFY_SRC_SYSTEM || 'zutai01'
 }
 
 // ===== 发布页（#/publish/:screenId?token=xxx）匿名访问判定 =====

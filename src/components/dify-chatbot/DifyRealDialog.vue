@@ -609,7 +609,7 @@ import MdEditorDialog from './MdEditorDialog.vue'
 import LinkViewerDialog from './LinkViewerDialog.vue'
 import { getFontScale } from './font-scale'
 import { XfIatRecognizer, isXfIatAvailable } from '@/utils/xf-iat'
-import { removeToken } from '@/utils/token-util'
+import { removeToken, getUrlSrcSystem } from '@/utils/token-util'
 import { assembleECharts } from 'flint-chart'
 import type { ChartAssemblyInput } from 'flint-chart'
 import * as echarts from 'echarts'
@@ -1025,8 +1025,9 @@ export default defineComponent({
         : props.loginAccount || localStorage.getItem('loginAccount') || ''
 
     // ===== 组态侧鉴权信息 =====
-    // 来源系统标识：随 X-Src-System 下发，值统一从环境变量取（三套 env 均已配置），缺省兜底 zutai01
-    const SRC_SYSTEM = import.meta.env.VITE_APP_DIFY_SRC_SYSTEM || 'zutai01'
+    // 来源系统标识：随 X-Src-System 下发，优先从 URL 的 srcSystem 参数取（如 #/?token=xxx&srcSystem=oauth01），
+    // 取不到再回退环境变量 VITE_APP_DIFY_SRC_SYSTEM（三套 env 均已配置），最终兜底 zutai01
+    const SRC_SYSTEM = getUrlSrcSystem()
 
     // 接口鉴权 token：
     // 优先用宿主传入的 authToken（如发布页匿名访问时 wrapper 传入的 URL token），否则回退 localStorage 的 DataS-Token

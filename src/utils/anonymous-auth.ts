@@ -12,6 +12,7 @@
  */
 import { difyRequest } from './dify-request'
 import { getIcApiUrl } from './apiUrl'
+import { getUrlSrcSystem } from './token-util'
 
 /**
  * 匿名登录前置校验：GET /api/oauth/checkToken（IC 网关）。
@@ -38,7 +39,7 @@ export const verifyAnonymousToken = async (urlToken: string): Promise<boolean> =
       {
         params: { token: raw },
         headers: {
-          'X-Src-System': import.meta.env.VITE_APP_DIFY_SRC_SYSTEM || 'zutai01',
+          'X-Src-System': getUrlSrcSystem(),
           token: raw,
         },
       },

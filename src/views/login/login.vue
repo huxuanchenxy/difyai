@@ -128,6 +128,10 @@ export default defineComponent({
     // router.push 的 query 会被自动编码，最终 URL 形如 /#/?token=owgBrqms9%2FFa4Z2Ri3iByg%3D%3D
     const anonymousToken = (import.meta.env.VITE_APP_ANONYMOUS_TOKEN || '').trim()
 
+    // 来源系统标识：登录页 URL 本身不带 srcSystem，故此时从配置（环境变量）取值，
+    // 登录成功后拼进跳转 URL（两种登录均如此），供主页面接口改从 URL 读取 X-Src-System
+    const srcSystemParam = (import.meta.env.VITE_APP_DIFY_SRC_SYSTEM || 'zutai01').trim()
+
     loginForm.value.username = localStorage.getItem('loginAccount') || ''
     remember.value = localStorage.getItem('loginRemember') == 'true'
     if (remember.value) {
@@ -205,7 +209,7 @@ export default defineComponent({
             localStorage.removeItem('loginPassword')
           }
 
-          router.push({ path: redirect.value || '/', query: otherQuery.value })
+          router.push({ path: redirect.value || '/', query: { ...otherQuery.value, srcSystem: srcSystemParam } })
         })
         .catch((result: any) => {
           if (result instanceof passwordExpiryError) {
@@ -232,7 +236,7 @@ export default defineComponent({
         ElMessage.warning('匿名登录未启用')
         return
       }
-      window.location.hash = `/?token=${anonymousToken}`
+      window.location.hash = `/?token=${anonymousToken}&srcSystem=${srcSystemParam}`
       window.location.reload()
     }
     return {
