@@ -1107,13 +1107,8 @@ export default defineComponent({
         const resp = await difyRequest.get(withLoginAccount(`${base}/api/session/list`), {
           headers: getAuthHeaders(),
         })
-        // 后端返回 code 非 200 视为鉴权失效（如「无效access_token」），跳转登录
-        const resCode = resp.data?.code
-        if (resCode !== undefined && resCode !== 200) {
-          console.warn('[DifyRealDialog] 会话列表接口返回异常 code:', resCode, 'msg:', resp.data?.msg)
-          redirectToLoginOnAuthError()
-          return
-        }
+        // 业务码异常时由 checkRespBusinessCode 统一处理：401 跳登录，其它弹 msg 提示
+        if (!checkRespBusinessCode(resp)) return
         const rawList = (resp.data?.data || []) as Array<{
           autoId?: number
           cache?: string
@@ -1359,6 +1354,11 @@ export default defineComponent({
           params: { sessionId },
           headers: getAuthHeaders(),
         })
+        // 业务码异常：401 跳登录，其它弹提示；均需重置消息列表避免展示脏数据
+        if (!checkRespBusinessCode(resp)) {
+          resetMessages()
+          return
+        }
         const raw = (resp.data?.data || []) as Array<{
           id?: number
           chatId?: string
@@ -1453,10 +1453,12 @@ export default defineComponent({
       }
       try {
         const base = import.meta.env.VITE_APP_DIFY_SESSION_HOST || 'http://10.89.34.77:8080'
-        await difyRequest.delete(
+        const resp = await difyRequest.delete(
           withLoginAccount(`${base}/api/session/delete/${encodeURIComponent(conv.sessionId)}`),
           { headers: getAuthHeaders() },
         )
+        // 业务码异常：401 跳登录，其它弹后端 msg 提示，均不继续本地删除
+        if (!checkRespBusinessCode(resp)) return
         removeConversationLocally(conv.id)
         nMessage.success('对话已删除', { duration: 1500 })
       } catch (e) {
@@ -1624,14 +1626,10 @@ export default defineComponent({
       return candidates.some(t => keywords.some(k => t.includes(k)))
     }
 
-    // 鉴权失败处理：清理本地 token 并跳回登录页（带 redirect 回跳当前页）。
-    // 宿主下发 authToken（发布页 / URL token 匿名场景）时不跳登录——登录页对该场景无意义，
-    // 且路由守卫会对 URL token 再次放行，只结束思考态展示错误
+    // 鉴权失败处理：清理本地 token 并跳回登录页。
+    // URL token（authToken prop）失效时同样跳转，但 redirect 不带参数，
+    // 避免登录成功后回跳含失效 token 的匿名 URL 形成循环。
     const redirectToLoginOnAuthError = () => {
-      if (props.authToken) {
-        console.warn('[DifyRealDialog][WS] 鉴权失败但存在宿主 authToken（URL token 免登录场景），不跳登录页')
-        return
-      }
       removeToken()
       // 主动断开并抑制 onclose 里的自动重连：token 已清，重连只会继续失败
       resetReconnect()
@@ -1645,8 +1643,33 @@ export default defineComponent({
       isLoading.value = false
       nMessage.error('登录状态已失效，请重新登录')
       // 本组件不感知路由（router 由宿主使用），hash 路由下直接改 location.hash 完成跳转
-      const cur = (window.location.hash || '').replace(/^#/, '') || '/'
-      window.location.hash = `#/login?redirect=${encodeURIComponent(cur)}`
+      if (props.authToken) {
+        // URL token 失效：跳不带 redirect 的登录页，防止登录后回跳含失效 token 的 URL 形成循环
+        window.location.hash = '#/login'
+      } else {
+        // 正常登录态失效：回跳当前路径（去掉 query 段，避免把已失效的 token 参数带入 redirect）
+        const cur = ((window.location.hash || '').replace(/^#/, '') || '/').split('?')[0]
+        window.location.hash = `#/login?redirect=${encodeURIComponent(cur)}`
+      }
+    }
+
+    /**
+     * 校验 difyRequest 响应体业务码，统一处理异常分支：
+     * - code 不存在或 === 200 → 正常，返回 true，调用方继续处理数据
+     * - code === 401          → 鉴权失效，跳登录页，返回 false
+     * - 其它 code（如 500）   → 弹出后端 msg 提示，返回 false
+     */
+    const checkRespBusinessCode = (resp: { data?: { code?: number; msg?: string; message?: string } }): boolean => {
+      const code = resp?.data?.code
+      if (code === undefined || code === 200) return true
+      const msg = resp?.data?.msg || resp?.data?.message || '接口请求失败'
+      console.warn('[DifyRealDialog] 接口返回异常 code:', code, 'msg:', msg)
+      if (code === 401) {
+        redirectToLoginOnAuthError()
+      } else {
+        nMessage.error(msg)
+      }
+      return false
     }
 
     // 停止生成：
