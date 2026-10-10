@@ -61,3 +61,40 @@ export const verifyAnonymousToken = async (urlToken: string): Promise<boolean> =
     return false
   }
 }
+
+/**
+ * 通用 token 有效性验证：GET /api/oauth/checkToken，code=200 返回 true。
+ *
+ * 可用于任意来源的 token（localStorage 登录态 / URL 匿名 token），
+ * 不区分来源、仅做有效性校验。使用场景：正常登录态进入主页时前置检查，
+ * 避免将已失效的本地 token 直接带入会话列表 / 历史消息等首次请求。
+ */
+export const checkTokenValidity = async (token: string): Promise<boolean> => {
+  const raw = (token || '').trim()
+  if (!raw) return false
+  const base = getIcApiUrl('')
+  const reqUrl = `${base}/api/oauth/checkToken`
+  console.log('[token-verify] checkToken 请求', { url: reqUrl })
+  try {
+    const resp = await difyRequest.get(reqUrl, {
+      params: { token: raw },
+      headers: {
+        'X-Src-System': getUrlSrcSystem(),
+        token: raw,
+      },
+    })
+    console.log('[token-verify] checkToken 返回', {
+      httpStatus: resp?.status,
+      code: resp?.data?.code,
+      valid: resp?.data?.code === 200,
+    })
+    return resp?.data?.code === 200
+  } catch (err: any) {
+    console.warn('[token-verify] checkToken 异常，视为无效', {
+      httpStatus: err?.response?.status,
+      data: err?.response?.data,
+      message: err?.message,
+    })
+    return false
+  }
+}

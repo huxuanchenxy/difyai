@@ -76,8 +76,8 @@ import { useRouter } from 'vue-router'
 import DifyRealDialog from '@/components/dify-chatbot/DifyRealDialog.vue'
 import BackendConfigDialog from './BackendConfigDialog.vue'
 import { UserStore } from '@/domains/user'
-import { getUrlAuthToken } from '@/utils/token-util'
-import { verifyAnonymousToken } from '@/utils/anonymous-auth'
+import { getUrlAuthToken, getToken, removeToken } from '@/utils/token-util'
+import { verifyAnonymousToken, checkTokenValidity } from '@/utils/anonymous-auth'
 import { IconSettings, IconLogout } from '@/icons'
 
 export default defineComponent({
@@ -109,16 +109,16 @@ export default defineComponent({
         window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${exactHash}`)
       }
     }
-    // 匿名访问：先用 URL token 调 GET /api/oauth/checkToken 校验有效性——
-    // code=200 才视为匿名登录成功，直接以 URL token 作为鉴权凭证渲染对话窗；
-    // 校验不通过（非 200 / 网络异常）则清掉 URL token 并整页重载回登录页。
-    // 校验完成前不渲染对话窗，避免用无效 token 抢先发起请求。
-    // 非匿名访问：authReady 直接为 true，不进校验流程，原有逻辑完全不变。
-    const authReady = ref(!isNoAuthAccess)
+    // 页面加载前置鉴权：渲染对话窗之前先调 GET /api/oauth/checkToken 验证 token 有效性——
+    // 匿名访问：校验 URL 上的 ?token；正常登录态：校验 localStorage DataS-Token。
+    // 校验通过才置 authReady=true 放行渲染，避免失效 token 抢先发起会话列表 / 历史等接口。
+    // 校验不通过：匿名场景清 URL token 后整页重载跳登录；登录态场景清本地 token 后 router.replace 跳登录。
+    const authReady = ref(false)
     // 实际下发给接口的鉴权值：非匿名时为空串（对话窗回退 localStorage 登录态），
     // 匿名时为通过校验的 URL token
     const effectiveToken = ref(urlToken)
     if (isNoAuthAccess) {
+      // 匿名 URL token：复用已有 verifyAnonymousToken（带 [anonymous-auth] 日志前缀）
       verifyAnonymousToken(urlToken).then(ok => {
         if (!ok) {
           // token 无效：守卫会从 hash 读到残留 token 而把 /login 弹回 /，
@@ -131,6 +131,25 @@ export default defineComponent({
         // 校验通过：沿用 URL token 作为鉴权凭证，放行渲染
         authReady.value = true
       })
+    } else {
+      // 正常登录态：先验证 localStorage token 是否在后端有效
+      const localToken = getToken()
+      if (!localToken) {
+        // 无本地 token（路由守卫应已拦截，此处防御性处理）：直接跳登录页
+        router.replace({ path: '/login', query: { redirect: '/' } })
+      } else {
+        checkTokenValidity(localToken).then(ok => {
+          if (!ok) {
+            // token 已失效：清本地 token 后跳登录页，登录后回跳主页
+            console.warn('[token-verify] 本地 token 校验未通过，清 token 并跳登录页')
+            removeToken()
+            router.replace({ path: '/login', query: { redirect: '/' } })
+            return
+          }
+          // 校验通过，放行渲染对话窗
+          authReady.value = true
+        })
+      }
     }
     // 对话窗始终内嵌显示
     const showDialog = ref(true)
