@@ -73,11 +73,13 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useMessage } from 'naive-ui'
 import DifyRealDialog from '@/components/dify-chatbot/DifyRealDialog.vue'
 import BackendConfigDialog from './BackendConfigDialog.vue'
 import { UserStore } from '@/domains/user'
 import { getUrlAuthToken, getToken, removeToken } from '@/utils/token-util'
 import { verifyAnonymousToken, checkTokenValidity } from '@/utils/anonymous-auth'
+import type { TokenCheckResult } from '@/utils/anonymous-auth'
 import { IconSettings, IconLogout } from '@/icons'
 
 export default defineComponent({
@@ -90,6 +92,7 @@ export default defineComponent({
   },
   setup() {
     const router = useRouter()
+    const nMessage = useMessage()
     // 免登录访问：URL 上带 ?token=xxx 时即为匿名访问（token 取自 VITE_APP_ANONYMOUS_TOKEN，
     // 由登录页「匿名登录」拼进 URL）；无 URL token 时为正常登录态，DifyRealDialog 回退 localStorage。
     const urlToken = getUrlAuthToken()
@@ -112,24 +115,32 @@ export default defineComponent({
     // 页面加载前置鉴权：渲染对话窗之前先调 GET /api/oauth/checkToken 验证 token 有效性——
     // 匿名访问：校验 URL 上的 ?token；正常登录态：校验 localStorage DataS-Token。
     // 校验通过才置 authReady=true 放行渲染，避免失效 token 抢先发起会话列表 / 历史等接口。
-    // 校验不通过：匿名场景清 URL token 后整页重载跳登录；登录态场景清本地 token 后 router.replace 跳登录。
+    // 校验不通过按 code 区分处理：401 视为鉴权失效跳登录；其它（如 500）仅弹后端错误提示、不跳登录。
     const authReady = ref(false)
     // 实际下发给接口的鉴权值：非匿名时为空串（对话窗回退 localStorage 登录态），
     // 匿名时为通过校验的 URL token
     const effectiveToken = ref(urlToken)
+    // 统一判定：校验失败时是否为鉴权失效（401）——是则走跳登录，否则弹错误提示
+    const isAuthInvalid = (result: TokenCheckResult): boolean => result.code === 401
     if (isNoAuthAccess) {
       // 匿名 URL token：复用已有 verifyAnonymousToken（带 [anonymous-auth] 日志前缀）
-      verifyAnonymousToken(urlToken).then(ok => {
-        if (!ok) {
-          // token 无效：守卫会从 hash 读到残留 token 而把 /login 弹回 /，
+      verifyAnonymousToken(urlToken).then(result => {
+        if (result.valid) {
+          // 校验通过：沿用 URL token 作为鉴权凭证，放行渲染
+          authReady.value = true
+          return
+        }
+        if (isAuthInvalid(result)) {
+          // 鉴权失效（401）：守卫会从 hash 读到残留 token 而把 /login 弹回 /，
           // 故先把地址改为不带 token 的 #/login 再整页重载，确保干净回到登录页
-          console.warn('[anonymous-auth] checkToken 未通过（code!=200），跳回登录页', { urlToken })
+          console.warn('[anonymous-auth] checkToken 鉴权失效（code=401），跳回登录页', { urlToken })
           window.location.hash = '#/login'
           window.location.reload()
           return
         }
-        // 校验通过：沿用 URL token 作为鉴权凭证，放行渲染
-        authReady.value = true
+        // 其它异常（如 500）：仅弹后端错误提示，保留 URL token 不跳登录
+        console.warn('[anonymous-auth] checkToken 异常（非鉴权），弹提示不跳登录', { code: result.code, msg: result.msg })
+        nMessage.error(result.msg || '服务异常，请稍后重试')
       })
     } else {
       // 正常登录态：先验证 localStorage token 是否在后端有效
@@ -138,16 +149,22 @@ export default defineComponent({
         // 无本地 token（路由守卫应已拦截，此处防御性处理）：直接跳登录页
         router.replace({ path: '/login', query: { redirect: '/' } })
       } else {
-        checkTokenValidity(localToken).then(ok => {
-          if (!ok) {
-            // token 已失效：清本地 token 后跳登录页，登录后回跳主页
-            console.warn('[token-verify] 本地 token 校验未通过，清 token 并跳登录页')
+        checkTokenValidity(localToken).then(result => {
+          if (result.valid) {
+            // 校验通过，放行渲染对话窗
+            authReady.value = true
+            return
+          }
+          if (isAuthInvalid(result)) {
+            // 鉴权失效（401）：清本地 token 后跳登录页，登录后回跳主页
+            console.warn('[token-verify] 本地 token 鉴权失效（code=401），清 token 并跳登录页')
             removeToken()
             router.replace({ path: '/login', query: { redirect: '/' } })
             return
           }
-          // 校验通过，放行渲染对话窗
-          authReady.value = true
+          // 其它异常（如 500）：仅弹后端错误提示，保留登录态不跳登录
+          console.warn('[token-verify] checkToken 异常（非鉴权），弹提示不跳登录', { code: result.code, msg: result.msg })
+          nMessage.error(result.msg || '服务异常，请稍后重试')
         })
       }
     }
