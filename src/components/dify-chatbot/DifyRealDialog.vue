@@ -3033,7 +3033,7 @@ export default defineComponent({
       breaks: true, // 单个换行符转 <br>，匹配聊天场景的宽松排版习惯
     })
 
-    // 结果表格简化：当表格同时含「文件类型」「文件全路径」两列时，去掉表头与「文件类型」列，
+    // 结果表格简化：当表格同时含「文件类型」与路径列（「文件全路径/文件路径/文件位置」）时，去掉表头与「文件类型」列，
     // 只保留文件路径：按「文件类型」查 FILE_LINK_BASE_MAP 取对应查看器 base 拼成可点击链接 [路径](base+路径)（类型未配置 base 则保持纯文本）。
     // 整张表用 markdown 列表（- 路径）替换；数据中可能混有零宽空格（如 "​1"），先清洗再判断
     const ZERO_WIDTH_RE = /[\u200B-\u200D\uFEFF]/g
@@ -3056,7 +3056,8 @@ export default defineComponent({
         if (isHeader) {
           const headers = splitTableRow(lines[i]).map(cleanTableCell)
           const typeIdx = headers.findIndex(h => h.includes('文件类型'))
-          const locIdx = headers.findIndex(h => h.includes('文件全路径'))
+          // 路径列头随后端 SQL 别名变动，兼容「文件全路径 / 文件路径 / 文件位置」等变体
+          const locIdx = headers.findIndex(h => /文件(全)?路径|文件位置/.test(h))
           if (typeIdx !== -1 && locIdx !== -1) {
             let j = i + 2
             for (; j < lines.length && /^\s*\|/.test(lines[j]); j++) {
